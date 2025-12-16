@@ -1,1 +1,11 @@
 @import 'tailwindcss';
+
+@theme {
+	--color-accent: #e32a6d;
+	--color-accent-hover: #c91f5a;
+}
+
+body {
+	@apply bg-gray-50 text-gray-900;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}

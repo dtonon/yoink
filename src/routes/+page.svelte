@@ -1,18 +1,56 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { nip19 } from 'nostr-tools';
 
 	let hasNip07Extension = $state(false);
 	let isCheckingExtension = $state(false);
 	let showNostrConnect = $state(false);
+	let errorMessage = $state('');
+
+	let userPubkey = $state<string>(''); // Hex format
+	let userNpub = $state<string>(''); // Npub format
 
 	onMount(() => {
 		// Check if window.nostr exists and is not the fake one from window.nostr.js
 		hasNip07Extension = typeof window.nostr !== 'undefined' && window.nostr._fake !== true;
+
+		// Check if user is already logged in
+		const savedPubkey = localStorage.getItem('userPubkey');
+		if (savedPubkey) {
+			userPubkey = savedPubkey;
+			userNpub = nip19.npubEncode(savedPubkey);
+
+			// TODO: redirect to the contacts view
+		}
 	});
 
-	function handleExtensionLogin() {
+	async function handleExtensionLogin() {
 		isCheckingExtension = true;
-		console.log('Extension login clicked');
+		errorMessage = '';
+
+		try {
+			const timeoutPromise = new Promise((_, reject) => {
+				setTimeout(() => reject(new Error('Extension request timed out')), 10000);
+			});
+
+			const pubkeyPromise = window.nostr!.getPublicKey();
+
+			const pubkey = (await Promise.race([pubkeyPromise, timeoutPromise])) as string;
+
+			if (pubkey) {
+				userPubkey = pubkey;
+				userNpub = nip19.npubEncode(pubkey);
+				localStorage.setItem('userPubkey', pubkey);
+
+				alert(`Login successful!\nPubkey: ${pubkey}\nNpub: ${userNpub}`);
+			}
+		} catch (error) {
+			console.error('Extension login error:', error);
+			errorMessage =
+				'Failed to get public key from extension, please make sure you approved the request.';
+		} finally {
+			isCheckingExtension = false;
+		}
 	}
 
 	function handleNostrConnectLogin() {
@@ -36,6 +74,14 @@
 		</div>
 
 		<div class="flex flex-col items-center space-y-4">
+			{#if errorMessage}
+				<div
+					class="w-full rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-center text-sm text-yellow-800"
+				>
+					{errorMessage}
+				</div>
+			{/if}
+
 			{#if hasNip07Extension}
 				<!-- NIP-07 extension detected -->
 				<button

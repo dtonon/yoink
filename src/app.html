@@ -7,5 +7,25 @@
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
+		<script>
+			window.wnjParams = {
+				startHidden: true,
+				compactMode: true,
+				accent: 'neutral',
+				nostrConnectRelays: [
+					'wss://bucket.coracle.social',
+					'wss://relay.nsec.app',
+					'wss://nos.lol',
+					'wss://relay.primal.net'
+				],
+				appMetadata: {
+					name: 'Nostr Contacts Manager',
+					image:
+						'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+					url: window.location.origin
+				}
+			};
+		</script>
+		<script src="https://unpkg.com/window.nostr.js"></script>
 	</body>
 </html>

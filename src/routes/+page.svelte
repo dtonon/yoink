@@ -3,8 +3,7 @@
 	import { nip19 } from 'nostr-tools';
 
 	let hasNip07Extension = $state(false);
-	let isCheckingExtension = $state(false);
-	let showNostrConnect = $state(false);
+	let isLoggingIn = $state(false);
 	let errorMessage = $state('');
 
 	let userPubkey = $state<string>(''); // Hex format
@@ -24,13 +23,13 @@
 		}
 	});
 
-	async function handleExtensionLogin() {
-		isCheckingExtension = true;
+	async function handleLogin() {
+		isLoggingIn = true;
 		errorMessage = '';
 
 		try {
 			const timeoutPromise = new Promise((_, reject) => {
-				setTimeout(() => reject(new Error('Extension request timed out')), 10000);
+				setTimeout(() => reject(new Error('Login request timed out')), 60_000);
 			});
 
 			const pubkeyPromise = window.nostr!.getPublicKey();
@@ -42,20 +41,20 @@
 				userNpub = nip19.npubEncode(pubkey);
 				localStorage.setItem('userPubkey', pubkey);
 
+				// TODO: redirect to the contacts view
 				alert(`Login successful!\nPubkey: ${pubkey}\nNpub: ${userNpub}`);
 			}
 		} catch (error) {
-			console.error('Extension login error:', error);
-			errorMessage =
-				'Failed to get public key from extension, please make sure you approved the request.';
-		} finally {
-			isCheckingExtension = false;
-		}
-	}
+			console.error('Login error:', error);
 
-	function handleNostrConnectLogin() {
-		showNostrConnect = true;
-		console.log('Nostr Connect login clicked');
+			if (error instanceof Error && error.message.includes('User rejected')) {
+				errorMessage = 'Login cancelled.';
+			} else {
+				errorMessage = 'Failed to login. Please make sure you approved the request.';
+			}
+		} finally {
+			isLoggingIn = false;
+		}
 	}
 
 	function handleNpubLogin() {
@@ -82,55 +81,31 @@
 				</div>
 			{/if}
 
-			{#if hasNip07Extension}
-				<!-- NIP-07 extension detected -->
-				<button
-					onclick={handleExtensionLogin}
-					disabled={isCheckingExtension}
-					class="cursor-pointer rounded-lg bg-accent px-8 py-4 font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					<div class="text-center">
-						<div class="text-2xl">Start managing your contacts</div>
-						<div class="text-sm">
-							{isCheckingExtension ? 'Checking extension...' : 'Login via extension'}
-						</div>
+			<button
+				onclick={handleLogin}
+				disabled={isLoggingIn}
+				class="cursor-pointer rounded-lg bg-accent px-8 py-4 font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+			>
+				<div class="text-center">
+					<div class="text-2xl">Start managing your contacts</div>
+					<div class="text-sm">
+						{#if isLoggingIn}
+							Logging in...
+						{:else if hasNip07Extension}
+							Login via extension
+						{:else}
+							Login via Nostr Connect / Nsec
+						{/if}
 					</div>
-				</button>
-
-				<div class="flex flex-col items-center space-y-2">
-					<button
-						onclick={handleNostrConnectLogin}
-						class="cursor-pointer text-center text-sm font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
-					>
-						Login via Nostr Connect or Nsec
-					</button>
-
-					<button
-						onclick={handleNpubLogin}
-						class="cursor-pointer text-center text-sm font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
-					>
-						Login in read-only mode via Npub
-					</button>
 				</div>
-			{:else}
-				<!-- No NIP-07 extension detected -->
-				<button
-					onclick={handleNostrConnectLogin}
-					class="cursor-pointer rounded-lg bg-accent px-8 py-4 font-medium text-white transition-colors hover:bg-accent-hover"
-				>
-					<div class="text-center">
-						<div class="text-2xl">Start managing your contacts</div>
-						<div class="text-sm">Login via Nostr Connect / Nsec</div>
-					</div>
-				</button>
+			</button>
 
-				<button
-					onclick={handleNpubLogin}
-					class="cursor-pointer text-sm font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
-				>
-					Login in read-only mode via Npub
-				</button>
-			{/if}
+			<button
+				onclick={handleNpubLogin}
+				class="cursor-pointer text-sm font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
+			>
+				Login in read-only mode via Npub
+			</button>
 		</div>
 	</div>
 </div>

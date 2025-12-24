@@ -6,7 +6,9 @@
 	let isLoggingIn = $state(false);
 	let errorMessage = $state('');
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let userPubkey = $state<string>(''); // Hex format
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let userNpub = $state<string>(''); // Npub format
 
 	onMount(() => {

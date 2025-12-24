@@ -42,6 +42,7 @@
 				userPubkey = pubkey;
 				userNpub = nip19.npubEncode(pubkey);
 				localStorage.setItem('userPubkey', pubkey);
+				localStorage.setItem('loginMode', 'full');
 
 				// TODO: redirect to the contacts view
 				alert(`Login successful!\nPubkey: ${pubkey}\nNpub: ${userNpub}`);
@@ -60,7 +61,46 @@
 	}
 
 	function handleNpubLogin() {
-		console.log('Npub login clicked');
+		errorMessage = '';
+
+		const input = prompt('Enter your npub or nprofile:');
+
+		if (!input) {
+			return;
+		}
+
+		try {
+			const trimmedInput = input.trim();
+			let pubkeyHex = '';
+
+			if (trimmedInput.startsWith('npub') || trimmedInput.startsWith('nprofile')) {
+				const decoded = nip19.decode(trimmedInput);
+				if (decoded.type === 'npub') {
+					pubkeyHex = decoded.data as string;
+				} else if (decoded.type === 'nprofile') {
+					pubkeyHex = decoded.data.pubkey;
+				}
+			} else {
+				errorMessage = 'Invalid format. Please enter a valid npub or nprofile.';
+				return;
+			}
+
+			if (!pubkeyHex) {
+				errorMessage = 'Failed to decode npub/nprofile.';
+				return;
+			}
+
+			userPubkey = pubkeyHex;
+			userNpub = nip19.npubEncode(pubkeyHex);
+			localStorage.setItem('userPubkey', pubkeyHex);
+			localStorage.setItem('loginMode', 'read');
+
+			// TODO: redirect to the contacts view
+			alert(`Login successful (read-only mode)!\nPubkey: ${pubkeyHex}\nNpub: ${userNpub}`);
+		} catch (error) {
+			console.error('Npub login error:', error);
+			errorMessage = 'Invalid npub/nprofile format. Please check and try again.';
+		}
 	}
 </script>
 

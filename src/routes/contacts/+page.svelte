@@ -1,5 +1,6 @@
 <script lang="ts">
 	let activeTab = $state<'new' | 'common' | 'missing'>('new');
+	let selectedContacts = $state<Set<string>>(new Set());
 
 	// Mock user data
 	let currentUser = {
@@ -9,6 +10,16 @@
 		contactsCount: 150,
 		lastUpdated: 'June 15, 2024 at 3:45 PM'
 	};
+
+	function toggleContactSelection(contactId: string) {
+		const newSelected = new Set(selectedContacts);
+		if (newSelected.has(contactId)) {
+			newSelected.delete(contactId);
+		} else {
+			newSelected.add(contactId);
+		}
+		selectedContacts = newSelected;
+	}
 
 	// Mock compared profile data
 	let comparedProfile = {
@@ -164,10 +175,15 @@
 		</div>
 
 		<!-- Contact List -->
-		<div class="">
+		<div class={selectedContacts.size > 0 ? 'mb-24' : ''}>
 			{#each allContacts[activeTab] as contact (contact.id)}
 				<div
-					class="flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-colors hover:bg-gray-100"
+					onclick={() => toggleContactSelection(contact.id)}
+					class="flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-all {selectedContacts.has(
+						contact.id
+					)
+						? 'border-l-4 border-l-pink-600 bg-gray-100'
+						: 'border-l-4 border-l-transparent hover:bg-gray-100'}"
 				>
 					<img
 						src={contact.picture}
@@ -184,3 +200,15 @@
 		</div>
 	</div>
 </div>
+
+<!-- Action Button - Fixed at Bottom -->
+{#if selectedContacts.size > 0}
+	<div class="fixed right-0 bottom-0 left-0 flex justify-center">
+		<button
+			class="w-full max-w-2xl cursor-pointer rounded-t-lg bg-pink-600 px-6 py-4 font-semibold text-white transition-colors hover:bg-pink-700"
+		>
+			Add {selectedContacts.size}
+			{selectedContacts.size === 1 ? 'person' : 'people'} to my contacts
+		</button>
+	</div>
+{/if}

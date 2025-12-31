@@ -71,3 +71,71 @@ export async function fetchUserProfile(pubkeyHex: string): Promise<UserProfile> 
 
 	return profile;
 }
+
+export async function fetchContactList(pubkeyHex: string): Promise<string[]> {
+	const p = getPool();
+
+	const contactsEvent = await p.get(DEFAULT_RELAYS, {
+		kinds: [3],
+		authors: [pubkeyHex]
+	});
+
+	if (!contactsEvent) {
+		return [];
+	}
+
+	return contactsEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
+}
+
+export interface ContactProfile {
+	pubkey: string;
+	npub: string;
+	name?: string;
+	display_name?: string;
+	picture?: string;
+	about?: string;
+}
+
+export async function fetchMultipleProfiles(pubkeyHexes: string[]): Promise<Map<string, ContactProfile>> {
+	const p = getPool();
+	const profiles = new Map<string, ContactProfile>();
+
+	// Initialize with default profiles
+	pubkeyHexes.forEach(pubkey => {
+		profiles.set(pubkey, {
+			pubkey,
+			npub: nip19.npubEncode(pubkey)
+		});
+	});
+
+	if (pubkeyHexes.length === 0) {
+		return profiles;
+	}
+
+	try {
+		const events = await p.querySync(DEFAULT_RELAYS, {
+			kinds: [0],
+			authors: pubkeyHexes
+		});
+
+		events.forEach(event => {
+			try {
+				const metadata = JSON.parse(event.content);
+				profiles.set(event.pubkey, {
+					pubkey: event.pubkey,
+					npub: nip19.npubEncode(event.pubkey),
+					name: metadata.name,
+					display_name: metadata.display_name,
+					picture: metadata.picture,
+					about: metadata.about
+				});
+			} catch (error) {
+				console.error('Error parsing metadata for', event.pubkey, error);
+			}
+		});
+	} catch (error) {
+		console.error('Error fetching profiles:', error);
+	}
+
+	return profiles;
+}

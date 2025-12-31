@@ -2,7 +2,8 @@
 	import { nip19 } from 'nostr-tools';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { fetchUserProfile, type UserProfile } from '$lib/nostr';
+	import { fetchUserProfile, fetchContactList, type UserProfile } from '$lib/nostr';
+	import { comparisonStore } from '$lib/store';
 
 	let compareNpub = $state('');
 	let errorMessage = $state('');
@@ -10,6 +11,7 @@
 	let isFetchingProfile = $state(true);
 
 	let currentUser = $state<UserProfile | null>(null);
+	let currentUserContacts = $state<string[]>([]);
 
 	onMount(async () => {
 		const userPubkey = localStorage.getItem('userPubkey');
@@ -19,7 +21,12 @@
 		}
 
 		try {
-			currentUser = await fetchUserProfile(userPubkey);
+			const [profile, contacts] = await Promise.all([
+				fetchUserProfile(userPubkey),
+				fetchContactList(userPubkey)
+			]);
+			currentUser = profile;
+			currentUserContacts = contacts;
 		} catch (error) {
 			console.error('Error fetching user profile:', error);
 			errorMessage = 'Failed to load profile data';
@@ -28,7 +35,7 @@
 		}
 	});
 
-	function handleLoadContact() {
+	async function handleLoadContact() {
 		errorMessage = '';
 
 		if (!compareNpub.trim()) {
@@ -43,14 +50,32 @@
 				return;
 			}
 
+			const targetPubkey = decoded.type === 'npub' ? decoded.data : decoded.data.pubkey;
+
 			isLoading = true;
-			// Simulate loading
-			setTimeout(() => {
-				isLoading = false;
-				goto('/contacts');
-			}, 500);
+
+			// Fetch target user's profile and contacts
+			const [targetProfile, targetContacts] = await Promise.all([
+				fetchUserProfile(targetPubkey),
+				fetchContactList(targetPubkey)
+			]);
+
+			isLoading = false;
+
+			// Store comparison data
+			comparisonStore.set({
+				currentUser: currentUser!,
+				currentUserContacts,
+				targetUser: targetProfile,
+				targetUserContacts: targetContacts
+			});
+
+			// Navigate to contacts page
+			goto('/contacts');
 		} catch (error) {
-			errorMessage = 'Invalid npub or nprofile format';
+			console.error('Error loading target profile:', error);
+			errorMessage = 'Failed to load target profile. Please try again.';
+			isLoading = false;
 		}
 	}
 </script>

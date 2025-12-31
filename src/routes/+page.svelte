@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { nip19 } from 'nostr-tools';
 
 	let hasNip07Extension = $state(false);
@@ -21,7 +22,7 @@
 			userPubkey = savedPubkey;
 			userNpub = nip19.npubEncode(savedPubkey);
 
-			// TODO: redirect to the contacts view
+			goto('/search');
 		}
 	});
 
@@ -44,8 +45,7 @@
 				localStorage.setItem('userPubkey', pubkey);
 				localStorage.setItem('loginMode', 'full');
 
-				// TODO: redirect to the contacts view
-				alert(`Login successful!\nPubkey: ${pubkey}\nNpub: ${userNpub}`);
+				goto('/search');
 			}
 		} catch (error) {
 			console.error('Login error:', error);
@@ -95,8 +95,7 @@
 			localStorage.setItem('userPubkey', pubkeyHex);
 			localStorage.setItem('loginMode', 'read');
 
-			// TODO: redirect to the contacts view
-			alert(`Login successful (read-only mode)!\nPubkey: ${pubkeyHex}\nNpub: ${userNpub}`);
+			goto('/search');
 		} catch (error) {
 			console.error('Npub login error:', error);
 			errorMessage = 'Invalid npub/nprofile format. Please check and try again.';

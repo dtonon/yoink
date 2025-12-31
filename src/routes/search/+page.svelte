@@ -1,19 +1,32 @@
 <script lang="ts">
 	import { nip19 } from 'nostr-tools';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { fetchUserProfile, type UserProfile } from '$lib/nostr';
 
 	let compareNpub = $state('');
 	let errorMessage = $state('');
 	let isLoading = $state(false);
+	let isFetchingProfile = $state(true);
 
-	// Mock user data
-	let currentUser = {
-		name: 'daniele',
-		npub: 'npub1xxxx...zzzz',
-		picture: 'https://i.pravatar.cc/150?img=5',
-		contactsCount: 150,
-		lastUpdated: 'June 15, 2024 at 3:45 PM'
-	};
+	let currentUser = $state<UserProfile | null>(null);
+
+	onMount(async () => {
+		const userPubkey = localStorage.getItem('userPubkey');
+		if (!userPubkey) {
+			goto('/');
+			return;
+		}
+
+		try {
+			currentUser = await fetchUserProfile(userPubkey);
+		} catch (error) {
+			console.error('Error fetching user profile:', error);
+			errorMessage = 'Failed to load profile data';
+		} finally {
+			isFetchingProfile = false;
+		}
+	});
 
 	function handleLoadContact() {
 		errorMessage = '';
@@ -43,49 +56,68 @@
 </script>
 
 <div class="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-	<div class="w-full max-w-xl space-y-8">
-		<!-- User Profile -->
-		<div class="flex items-center gap-4">
-			<img src={currentUser.picture} alt={currentUser.name} class="h-16 w-16 rounded-full" />
-			<div>
-				<h1 class="text-2xl font-bold text-gray-900">{currentUser.name}</h1>
-				<p class="text-sm text-gray-500">{currentUser.npub}</p>
+	{#if isFetchingProfile}
+		<div class="text-center">
+			<p class="text-lg text-gray-600">Loading your profile...</p>
+		</div>
+	{:else if currentUser}
+		<div class="w-full max-w-xl space-y-6">
+			<!-- User Profile -->
+			<div class="flex items-center gap-4">
+				<img
+					src={currentUser.picture ||
+						'https://api.dicebear.com/7.x/identicon/svg?seed=' + currentUser.pubkey}
+					alt={currentUser.name || 'User'}
+					class="h-16 w-16 rounded-full"
+				/>
+				<div>
+					<h1 class="text-2xl font-bold text-gray-900">{currentUser.name || 'Anonymous'}</h1>
+					<p class="text-sm text-gray-500">
+						{currentUser.npub.slice(0, 8)}...{currentUser.npub.slice(-5)}
+					</p>
+				</div>
+			</div>
+
+			<!-- Welcome Message -->
+			<p class="leading-6 text-gray-900">
+				Welcome <span class="font-medium"
+					>{currentUser.display_name || currentUser.name || 'Anonymous'}</span
+				>, your most recent contacts list has been fetched.
+				{#if currentUser.lastUpdated}
+					It has been updated on <span class="font-medium">{currentUser.lastUpdated}</span>
+				{/if}
+				and it contains <span class="font-medium">{currentUser.contactsCount}</span>
+				{currentUser.contactsCount === 1 ? 'person' : 'people'}. Now tell me which profile you want
+				to compare it with:
+			</p>
+
+			<!-- Error Message -->
+			{#if errorMessage}
+				<div
+					class="w-full rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-center text-sm text-yellow-800"
+				>
+					{errorMessage}
+				</div>
+			{/if}
+
+			<div class="space-y-4">
+				<!-- Input -->
+				<input
+					type="text"
+					bind:value={compareNpub}
+					placeholder="npub or nprofile"
+					class="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-300 focus:outline-none"
+				/>
+
+				<!-- Button -->
+				<button
+					onclick={handleLoadContact}
+					disabled={isLoading}
+					class="w-full cursor-pointer rounded-lg bg-accent px-6 py-3 font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+				>
+					{isLoading ? 'Loading...' : 'Load the target user data'}
+				</button>
 			</div>
 		</div>
-
-		<!-- Welcome Message -->
-		<p class="leading-6 text-gray-900">
-			Welcome <span class="font-medium">{currentUser.name}</span>, your most recent contacts list
-			has been fetched. It has been updated on
-			<span class="font-medium">{currentUser.lastUpdated}</span>
-			and it contains <span class="font-medium">{currentUser.contactsCount}</span>
-			people. Now tell me which profile you want to compare it with:
-		</p>
-
-		<!-- Error Message -->
-		{#if errorMessage}
-			<div
-				class="w-full rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-center text-sm text-yellow-800"
-			>
-				{errorMessage}
-			</div>
-		{/if}
-
-		<!-- Input -->
-		<input
-			type="text"
-			bind:value={compareNpub}
-			placeholder="npub or nprofile"
-			class="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-300 focus:outline-none"
-		/>
-
-		<!-- Button -->
-		<button
-			onclick={handleLoadContact}
-			disabled={isLoading}
-			class="w-full cursor-pointer rounded-lg bg-accent px-6 py-3 font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
-		>
-			{isLoading ? 'Loading...' : 'Load the contact data'}
-		</button>
-	</div>
+	{/if}
 </div>

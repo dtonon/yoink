@@ -9,6 +9,7 @@
 	let selectedCommonContacts = $state<Set<string>>(new Set());
 	let selectedMissingContacts = $state<Set<string>>(new Set());
 	let isLoading = $state(true);
+	let loginMode = $state<'full' | 'read'>('read');
 
 	let currentUser = $state<UserProfile | null>(null);
 	let targetUser = $state<UserProfile | null>(null);
@@ -28,6 +29,9 @@
 	});
 
 	function toggleContactSelection(contactId: string) {
+		// Disable selection in read-only mode
+		if (loginMode === 'read') return;
+
 		let selectedSet: Set<string>;
 
 		if (activeTab === 'new') {
@@ -53,6 +57,13 @@
 		}
 	}
 
+	function handleReadOnlyLogout() {
+		localStorage.removeItem('userPubkey');
+		localStorage.removeItem('loginMode');
+		comparisonStore.set(null);
+		goto('/');
+	}
+
 	function getActiveSelection(): Set<string> {
 		if (activeTab === 'new') return selectedNewContacts;
 		if (activeTab === 'common') return selectedCommonContacts;
@@ -72,6 +83,9 @@
 	}
 
 	onMount(async () => {
+		// Get login mode
+		loginMode = (localStorage.getItem('loginMode') as 'full' | 'read') || 'read';
+
 		// Get data from store
 		const data = $comparisonStore;
 
@@ -229,11 +243,13 @@
 					{#each allContacts.new as contact (contact.id)}
 						<div
 							onclick={() => toggleContactSelection(contact.id)}
-							class="flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-all {selectedNewContacts.has(
-								contact.id
-							)
+							class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode === 'full'
+								? 'cursor-pointer'
+								: 'cursor-default'} {selectedNewContacts.has(contact.id)
 								? 'border-l-4 border-l-pink-600 bg-gray-100'
-								: 'border-l-4 border-l-transparent hover:bg-gray-100'}"
+								: loginMode === 'full'
+									? 'border-l-4 border-l-transparent hover:bg-gray-100'
+									: 'border-l-4 border-l-transparent'}"
 						>
 							<img
 								src={contact.picture ||
@@ -259,11 +275,13 @@
 					{#each allContacts.common as contact (contact.id)}
 						<div
 							onclick={() => toggleContactSelection(contact.id)}
-							class="flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-all {selectedCommonContacts.has(
-								contact.id
-							)
+							class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode === 'full'
+								? 'cursor-pointer'
+								: 'cursor-default'} {selectedCommonContacts.has(contact.id)
 								? 'border-l-4 border-l-pink-600 bg-gray-100'
-								: 'border-l-4 border-l-transparent hover:bg-gray-100'}"
+								: loginMode === 'full'
+									? 'border-l-4 border-l-transparent hover:bg-gray-100'
+									: 'border-l-4 border-l-transparent'}"
 						>
 							<img
 								src={contact.picture ||
@@ -289,11 +307,13 @@
 					{#each allContacts.missing as contact (contact.id)}
 						<div
 							onclick={() => toggleContactSelection(contact.id)}
-							class="flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-all {selectedMissingContacts.has(
-								contact.id
-							)
+							class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode === 'full'
+								? 'cursor-pointer'
+								: 'cursor-default'} {selectedMissingContacts.has(contact.id)
 								? 'border-l-4 border-l-pink-600 bg-gray-100'
-								: 'border-l-4 border-l-transparent hover:bg-gray-100'}"
+								: loginMode === 'full'
+									? 'border-l-4 border-l-transparent hover:bg-gray-100'
+									: 'border-l-4 border-l-transparent'}"
 						>
 							<img
 								src={contact.picture ||
@@ -319,7 +339,16 @@
 </div>
 
 <!-- Action Button - Fixed at Bottom -->
-{#if getActiveSelection().size > 0}
+{#if loginMode === 'read'}
+	<div class="fixed right-0 bottom-0 left-0 flex justify-center">
+		<button
+			onclick={handleReadOnlyLogout}
+			class="w-full max-w-2xl cursor-pointer rounded-t-lg bg-gray-700 px-6 py-4 font-semibold text-white transition-colors hover:bg-gray-800"
+		>
+			Read-only mode, login to update the list
+		</button>
+	</div>
+{:else if getActiveSelection().size > 0}
 	<div class="fixed right-0 bottom-0 left-0 flex justify-center">
 		<button
 			class="w-full max-w-2xl cursor-pointer rounded-t-lg bg-pink-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-pink-700"

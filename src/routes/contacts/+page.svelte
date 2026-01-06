@@ -224,32 +224,95 @@
 
 			<!-- Contact List -->
 			<div class={getActiveSelection().size > 0 ? 'mb-24' : ''}>
-				{#each allContacts[activeTab] as contact (contact.id)}
-					<div
-						onclick={() => toggleContactSelection(contact.id)}
-						class="flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-all {getActiveSelection().has(
-							contact.id
-						)
-							? 'border-l-4 border-l-pink-600 bg-gray-100'
-							: 'border-l-4 border-l-transparent hover:bg-gray-100'}"
-					>
-						<img
-							src={contact.picture ||
-								'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
-							alt={contact.name || 'Anonymous'}
-							class="h-14 w-14 flex-shrink-0 rounded-full"
-						/>
-						<div class="flex-1">
-							<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-							<p class="text-sm text-gray-500">
-								{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
-							</p>
-							{#if contact.about}
-								<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
-							{/if}
+				<!-- New Tab -->
+				<div class={activeTab === 'new' ? '' : 'hidden'}>
+					{#each allContacts.new as contact (contact.id)}
+						<div
+							onclick={() => toggleContactSelection(contact.id)}
+							class="flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-all {selectedNewContacts.has(
+								contact.id
+							)
+								? 'border-l-4 border-l-pink-600 bg-gray-100'
+								: 'border-l-4 border-l-transparent hover:bg-gray-100'}"
+						>
+							<img
+								src={contact.picture ||
+									'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
+								alt={contact.name || 'Anonymous'}
+								class="h-14 w-14 flex-shrink-0 rounded-full"
+							/>
+							<div class="flex-1">
+								<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+								<p class="text-sm text-gray-500">
+									{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
+								</p>
+								{#if contact.about}
+									<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
+								{/if}
+							</div>
 						</div>
-					</div>
-				{/each}
+					{/each}
+				</div>
+
+				<!-- Common Tab -->
+				<div class={activeTab === 'common' ? '' : 'hidden'}>
+					{#each allContacts.common as contact (contact.id)}
+						<div
+							onclick={() => toggleContactSelection(contact.id)}
+							class="flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-all {selectedCommonContacts.has(
+								contact.id
+							)
+								? 'border-l-4 border-l-pink-600 bg-gray-100'
+								: 'border-l-4 border-l-transparent hover:bg-gray-100'}"
+						>
+							<img
+								src={contact.picture ||
+									'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
+								alt={contact.name || 'Anonymous'}
+								class="h-14 w-14 flex-shrink-0 rounded-full"
+							/>
+							<div class="flex-1">
+								<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+								<p class="text-sm text-gray-500">
+									{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
+								</p>
+								{#if contact.about}
+									<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Missing Tab -->
+				<div class={activeTab === 'missing' ? '' : 'hidden'}>
+					{#each allContacts.missing as contact (contact.id)}
+						<div
+							onclick={() => toggleContactSelection(contact.id)}
+							class="flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-all {selectedMissingContacts.has(
+								contact.id
+							)
+								? 'border-l-4 border-l-pink-600 bg-gray-100'
+								: 'border-l-4 border-l-transparent hover:bg-gray-100'}"
+						>
+							<img
+								src={contact.picture ||
+									'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
+								alt={contact.name || 'Anonymous'}
+								class="h-14 w-14 flex-shrink-0 rounded-full"
+							/>
+							<div class="flex-1">
+								<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+								<p class="text-sm text-gray-500">
+									{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
+								</p>
+								{#if contact.about}
+									<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
 			</div>
 		</div>
 	{/if}

@@ -1,4 +1,5 @@
 import { SimplePool, nip19, type Event } from 'nostr-tools';
+import { normalizeURL } from 'nostr-tools/utils';
 
 const DEFAULT_RELAYS = [
 	'wss://relay.damus.io',
@@ -138,4 +139,80 @@ export async function fetchMultipleProfiles(pubkeyHexes: string[]): Promise<Map<
 	}
 
 	return profiles;
+}
+
+async function fetchUserWriteRelays(userPubkey: string): Promise<string[]> {
+	const p = getPool();
+
+	try {
+		// Fetch user's relay list (kind 10002 - NIP-65)
+		const relayListEvent = await p.get(DEFAULT_RELAYS, {
+			kinds: [10002],
+			authors: [userPubkey]
+		});
+
+		if (!relayListEvent) {
+			return [];
+		}
+
+		// Extract write relays
+		const writeRelays: string[] = [];
+		relayListEvent.tags.forEach(tag => {
+			if (tag[0] === 'r') {
+				const relayUrl = tag[1];
+				const marker = tag[2]; // 'read', 'write', or undefined (both)
+
+				// Include if it's a write relay or no marker specified (means both)
+				if (!marker || marker === 'write') {
+					writeRelays.push(relayUrl);
+				}
+			}
+		});
+
+		return writeRelays;
+	} catch (error) {
+		console.error('Error fetching user relay list:', error);
+		return [];
+	}
+}
+
+export async function updateContactList(
+	userPubkey: string,
+	contactPubkeys: string[]
+): Promise<void> {
+	const p = getPool();
+
+	// Fetch user's write relays
+	const userWriteRelays = await fetchUserWriteRelays(userPubkey);
+
+	// Combine user's write relays with defaults (user's relays first)
+	const allRelays = userWriteRelays.length > 0
+		? [...userWriteRelays, ...DEFAULT_RELAYS]
+		: DEFAULT_RELAYS;
+
+	// Normalize and remove duplicates
+	const normalizedRelays = allRelays.map(url => normalizeURL(url));
+	const uniqueRelays = [...new Set(normalizedRelays)];
+
+	// Create kind 3 event
+	const event = {
+		kind: 3,
+		created_at: Math.floor(Date.now() / 1000),
+		tags: contactPubkeys.map(pubkey => ['p', pubkey]),
+		content: '',
+		pubkey: userPubkey
+	};
+
+	// Sign event using window.nostr
+	if (!window.nostr) {
+		throw new Error('Nostr extension not available');
+	}
+
+	const signedEvent = await window.nostr.signEvent(event);
+
+	// Publish to relays
+	const publishPromises = p.publish(uniqueRelays, signedEvent);
+
+	// Wait for at least one relay to confirm
+	await Promise.race(publishPromises);
 }

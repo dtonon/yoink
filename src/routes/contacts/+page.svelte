@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { fetchMultipleProfiles, type UserProfile, type ContactProfile } from '$lib/nostr';
+	import { fade } from 'svelte/transition';
+	import {
+		fetchMultipleProfiles,
+		updateContactList,
+		type UserProfile,
+		type ContactProfile
+	} from '$lib/nostr';
 	import { comparisonStore } from '$lib/store';
 
 	let activeTab = $state<'new' | 'common' | 'missing'>('new');
@@ -10,9 +16,11 @@
 	let selectedMissingContacts = $state<Set<string>>(new Set());
 	let isLoading = $state(true);
 	let loginMode = $state<'full' | 'read'>('read');
+	let updateStatus = $state<'idle' | 'updating' | 'success'>('idle');
 
 	let currentUser = $state<UserProfile | null>(null);
 	let targetUser = $state<UserProfile | null>(null);
+	let currentUserContactsList = $state<string[]>([]);
 
 	interface ContactWithProfile extends ContactProfile {
 		id: string;
@@ -117,6 +125,111 @@
 		return contacts.length > 0 && contacts.every((c) => currentSelection.has(c.id));
 	}
 
+	async function handleUpdate() {
+		if (updateStatus === 'updating' || !currentUser) return;
+
+		updateStatus = 'updating';
+
+		try {
+			let newContactsList = [...currentUserContactsList];
+
+			if (activeTab === 'new') {
+				// Add selected contacts
+				const toAdd = Array.from(selectedNewContacts);
+				newContactsList = [...new Set([...newContactsList, ...toAdd])];
+			} else {
+				// Remove selected contacts (common or missing tabs)
+				const toRemove =
+					activeTab === 'common'
+						? Array.from(selectedCommonContacts)
+						: Array.from(selectedMissingContacts);
+				newContactsList = newContactsList.filter((pubkey) => !toRemove.includes(pubkey));
+			}
+
+			// Update contact list on Nostr
+			await updateContactList(currentUser.pubkey, newContactsList);
+
+			// Update local state
+			currentUserContactsList = newContactsList;
+
+			// Clear selections
+			if (activeTab === 'new') {
+				selectedNewContacts = new Set();
+			} else if (activeTab === 'common') {
+				selectedCommonContacts = new Set();
+			} else {
+				selectedMissingContacts = new Set();
+			}
+
+			// Recompute contacts comparison
+			await recomputeContacts();
+
+			// Show success state
+			updateStatus = 'success';
+
+			// Fade out after 3 seconds
+			setTimeout(() => {
+				updateStatus = 'idle';
+			}, 3000);
+		} catch (error) {
+			console.error('Error updating contact list:', error);
+			updateStatus = 'idle';
+			alert('Failed to update contact list. Please try again.');
+		}
+	}
+
+	async function recomputeContacts() {
+		if (!currentUser || !targetUser) return;
+
+		const currentContacts = new Set(currentUserContactsList);
+		const data = $comparisonStore;
+		if (!data) return;
+
+		const targetContacts = new Set(data.targetUserContacts);
+
+		// Compute diffs
+		const newContactsPubkeys: string[] = [];
+		const commonContactsPubkeys: string[] = [];
+		const missingContactsPubkeys: string[] = [];
+
+		targetContacts.forEach((pubkey) => {
+			if (!currentContacts.has(pubkey)) {
+				newContactsPubkeys.push(pubkey);
+			} else {
+				commonContactsPubkeys.push(pubkey);
+			}
+		});
+
+		currentContacts.forEach((pubkey) => {
+			if (!targetContacts.has(pubkey)) {
+				missingContactsPubkeys.push(pubkey);
+			}
+		});
+
+		// Update user profile count
+		currentUser.contactsCount = currentUserContactsList.length;
+
+		// Fetch profiles for new contacts if needed
+		const allPubkeys = [...newContactsPubkeys, ...commonContactsPubkeys, ...missingContactsPubkeys];
+		const profilesMap = await fetchMultipleProfiles(allPubkeys);
+
+		// Update contacts
+		allContacts = {
+			new: newContactsPubkeys.map((pubkey) => ({
+				id: pubkey,
+				...profilesMap.get(pubkey)!
+			})),
+			common: commonContactsPubkeys.map((pubkey) => ({
+				id: pubkey,
+				...profilesMap.get(pubkey)!
+			})),
+			missing: missingContactsPubkeys.map((pubkey) => ({
+				id: pubkey,
+				...profilesMap.get(pubkey)!
+			}))
+		};
+	}
+
 	onMount(async () => {
 		// Get login mode
 		loginMode = (localStorage.getItem('loginMode') as 'full' | 'read') || 'read';
@@ -131,6 +244,7 @@
 
 		currentUser = data.currentUser;
 		targetUser = data.targetUser;
+		currentUserContactsList = [...data.currentUserContacts];
 
 		const currentContacts = new Set(data.currentUserContacts);
 		const targetContacts = new Set(data.targetUserContacts);
@@ -286,9 +400,9 @@
 				{/if}
 
 				<!-- Contact List -->
-				<div class={getActiveSelection().size > 0 ? 'mb-24' : ''}>
+				<div class="overflow-hidden {getActiveSelection().size > 0 ? 'mb-24' : ''}">
 					<!-- New Tab -->
-					<div class={activeTab === 'new' ? '' : 'hidden'}>
+					<div class={activeTab === 'new' ? 'block' : 'hidden'}>
 						{#each allContacts.new as contact (contact.id)}
 							<div
 								onclick={() => toggleContactSelection(contact.id)}
@@ -321,7 +435,7 @@
 					</div>
 
 					<!-- Common Tab -->
-					<div class={activeTab === 'common' ? '' : 'hidden'}>
+					<div class={activeTab === 'common' ? 'block' : 'hidden'}>
 						{#each allContacts.common as contact (contact.id)}
 							<div
 								onclick={() => toggleContactSelection(contact.id)}
@@ -354,7 +468,7 @@
 					</div>
 
 					<!-- Missing Tab -->
-					<div class={activeTab === 'missing' ? '' : 'hidden'}>
+					<div class={activeTab === 'missing' ? 'block' : 'hidden'}>
 						{#each allContacts.missing as contact (contact.id)}
 							<div
 								onclick={() => toggleContactSelection(contact.id)}
@@ -393,7 +507,7 @@
 
 <!-- Action Button - Fixed at Bottom -->
 {#if loginMode === 'read'}
-	<div class="fixed right-0 bottom-0 left-0 flex justify-center">
+	<div class="fixed right-0 bottom-0 left-0 flex justify-center px-4">
 		<button
 			onclick={handleReadOnlyLogout}
 			class="w-full max-w-2xl cursor-pointer rounded-t-lg bg-gray-700 px-6 py-4 font-semibold text-white transition-colors hover:bg-gray-800"
@@ -401,12 +515,46 @@
 			Read-only mode, login to update the list
 		</button>
 	</div>
+{:else if updateStatus === 'success'}
+	<div class="fixed right-0 bottom-0 left-0 flex justify-center px-4" transition:fade>
+		<button class="w-full max-w-2xl rounded-t-lg bg-green-600 px-6 py-4 font-semibold text-white">
+			Update done
+		</button>
+	</div>
 {:else if getActiveSelection().size > 0}
-	<div class="fixed right-0 bottom-0 left-0 flex justify-center">
+	<div class="fixed right-0 bottom-0 left-0 flex justify-center px-4">
 		<button
-			class="w-full max-w-2xl cursor-pointer rounded-t-lg bg-pink-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-pink-700"
+			onclick={handleUpdate}
+			disabled={updateStatus === 'updating'}
+			class="w-full max-w-2xl cursor-pointer rounded-t-lg bg-pink-600 px-6 py-4 font-semibold text-white transition-colors hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-75"
 		>
-			{getActionText()}
+			{#if updateStatus === 'updating'}
+				<span class="flex items-center justify-center gap-2">
+					<svg
+						class="h-5 w-5 animate-spin"
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+					>
+						<circle
+							class="opacity-25"
+							cx="12"
+							cy="12"
+							r="10"
+							stroke="currentColor"
+							stroke-width="4"
+						></circle>
+						<path
+							class="opacity-75"
+							fill="currentColor"
+							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+						></path>
+					</svg>
+					Updating...
+				</span>
+			{:else}
+				{getActionText()}
+			{/if}
 		</button>
 	</div>
 {/if}

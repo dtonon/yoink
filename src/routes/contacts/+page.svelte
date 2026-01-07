@@ -4,6 +4,8 @@
 	import { fade } from 'svelte/transition';
 	import {
 		fetchMultipleProfiles,
+		fetchUserProfile,
+		fetchContactList,
 		updateContactList,
 		type UserProfile,
 		type ContactProfile
@@ -234,64 +236,89 @@
 		// Get login mode
 		loginMode = (localStorage.getItem('loginMode') as 'full' | 'read') || 'read';
 
-		// Get data from store
-		const data = $comparisonStore;
+		// Get pubkeys from localStorage
+		const targetPubkey = localStorage.getItem('targetPubkey');
+		const userPubkey = localStorage.getItem('userPubkey');
 
-		if (!data) {
+		if (!targetPubkey || !userPubkey) {
 			goto('/search');
 			return;
 		}
 
-		currentUser = data.currentUser;
-		targetUser = data.targetUser;
-		currentUserContactsList = [...data.currentUserContacts];
+		try {
+			// Always fetch both users fresh
+			const [currentUserProfile, currentUserContacts, targetUserProfile, targetUserContacts] =
+				await Promise.all([
+					fetchUserProfile(userPubkey),
+					fetchContactList(userPubkey),
+					fetchUserProfile(targetPubkey),
+					fetchContactList(targetPubkey)
+				]);
 
-		const currentContacts = new Set(data.currentUserContacts);
-		const targetContacts = new Set(data.targetUserContacts);
+			// Store comparison data
+			const data = {
+				currentUser: currentUserProfile,
+				currentUserContacts: currentUserContacts,
+				targetUser: targetUserProfile,
+				targetUserContacts: targetUserContacts
+			};
+			comparisonStore.set(data);
 
-		// Compute diffs
-		const newContactsPubkeys: string[] = [];
-		const commonContactsPubkeys: string[] = [];
-		const missingContactsPubkeys: string[] = [];
+			currentUser = currentUserProfile;
+			targetUser = targetUserProfile;
+			currentUserContactsList = [...currentUserContacts];
 
-		// New = in target but not in current
-		targetContacts.forEach((pubkey) => {
-			if (!currentContacts.has(pubkey)) {
-				newContactsPubkeys.push(pubkey);
-			} else {
-				commonContactsPubkeys.push(pubkey);
-			}
-		});
+			const currentContactsSet = new Set(currentUserContacts);
+			const targetContactsSet = new Set(targetUserContacts);
 
-		// Missing = in current but not in target
-		currentContacts.forEach((pubkey) => {
-			if (!targetContacts.has(pubkey)) {
-				missingContactsPubkeys.push(pubkey);
-			}
-		});
+			// Compute diffs
+			const newContactsPubkeys: string[] = [];
+			const commonContactsPubkeys: string[] = [];
+			const missingContactsPubkeys: string[] = [];
 
-		// Fetch all profiles
-		const allPubkeys = [...newContactsPubkeys, ...commonContactsPubkeys, ...missingContactsPubkeys];
+			// New = in target but not in current
+			targetContactsSet.forEach((pubkey) => {
+				if (!currentContactsSet.has(pubkey)) {
+					newContactsPubkeys.push(pubkey);
+				} else {
+					commonContactsPubkeys.push(pubkey);
+				}
+			});
 
-		const profilesMap = await fetchMultipleProfiles(allPubkeys);
+			// Missing = in current but not in target
+			currentContactsSet.forEach((pubkey) => {
+				if (!targetContactsSet.has(pubkey)) {
+					missingContactsPubkeys.push(pubkey);
+				}
+			});
 
-		// Map to contacts with profiles
-		allContacts = {
-			new: newContactsPubkeys.map((pubkey) => ({
-				id: pubkey,
-				...profilesMap.get(pubkey)!
-			})),
-			common: commonContactsPubkeys.map((pubkey) => ({
-				id: pubkey,
-				...profilesMap.get(pubkey)!
-			})),
-			missing: missingContactsPubkeys.map((pubkey) => ({
-				id: pubkey,
-				...profilesMap.get(pubkey)!
-			}))
-		};
+			// Fetch all profiles
+			const allPubkeys = [...newContactsPubkeys, ...commonContactsPubkeys, ...missingContactsPubkeys];
 
-		isLoading = false;
+			const profilesMap = await fetchMultipleProfiles(allPubkeys);
+
+			// Map to contacts with profiles
+			allContacts = {
+				new: newContactsPubkeys.map((pubkey) => ({
+					id: pubkey,
+					...profilesMap.get(pubkey)!
+				})),
+				common: commonContactsPubkeys.map((pubkey) => ({
+					id: pubkey,
+					...profilesMap.get(pubkey)!
+				})),
+				missing: missingContactsPubkeys.map((pubkey) => ({
+					id: pubkey,
+					...profilesMap.get(pubkey)!
+				}))
+			};
+
+			isLoading = false;
+		} catch (error) {
+			console.error('Error loading comparison:', error);
+			isLoading = false;
+			goto('/search');
+		}
 	});
 </script>
 

@@ -35,7 +35,7 @@
 		}
 	});
 
-	async function handleLoadContact() {
+	function handleLoadContact() {
 		errorMessage = '';
 
 		if (!compareNpub.trim()) {
@@ -52,30 +52,14 @@
 
 			const targetPubkey = decoded.type === 'npub' ? decoded.data : decoded.data.pubkey;
 
-			isLoading = true;
+			// Save target pubkey to localStorage
+			localStorage.setItem('targetPubkey', targetPubkey);
 
-			// Fetch target user's profile and contacts
-			const [targetProfile, targetContacts] = await Promise.all([
-				fetchUserProfile(targetPubkey),
-				fetchContactList(targetPubkey)
-			]);
-
-			isLoading = false;
-
-			// Store comparison data
-			comparisonStore.set({
-				currentUser: currentUser!,
-				currentUserContacts,
-				targetUser: targetProfile,
-				targetUserContacts: targetContacts
-			});
-
-			// Navigate to contacts page
+			// Navigate to contacts page (will load data there)
 			goto('/contacts');
 		} catch (error) {
-			console.error('Error loading target profile:', error);
-			errorMessage = 'Failed to load target profile. Please try again.';
-			isLoading = false;
+			console.error('Error decoding npub:', error);
+			errorMessage = 'Invalid npub or nprofile format';
 		}
 	}
 </script>

@@ -82,6 +82,41 @@
 		}
 	}
 
+	function handleSelectAll() {
+		if (loginMode === 'read') return;
+
+		const contacts = allContacts[activeTab];
+		const currentSelection = getActiveSelection();
+		const allSelected = contacts.length > 0 && contacts.every((c) => currentSelection.has(c.id));
+
+		if (allSelected) {
+			// Deselect all
+			if (activeTab === 'new') {
+				selectedNewContacts = new Set();
+			} else if (activeTab === 'common') {
+				selectedCommonContacts = new Set();
+			} else {
+				selectedMissingContacts = new Set();
+			}
+		} else {
+			// Select all
+			const allIds = new Set(contacts.map((c) => c.id));
+			if (activeTab === 'new') {
+				selectedNewContacts = allIds;
+			} else if (activeTab === 'common') {
+				selectedCommonContacts = allIds;
+			} else {
+				selectedMissingContacts = allIds;
+			}
+		}
+	}
+
+	function isAllSelected(): boolean {
+		const contacts = allContacts[activeTab];
+		const currentSelection = getActiveSelection();
+		return contacts.length > 0 && contacts.every((c) => currentSelection.has(c.id));
+	}
+
 	onMount(async () => {
 		// Get login mode
 		loginMode = (localStorage.getItem('loginMode') as 'full' | 'read') || 'read';
@@ -207,131 +242,149 @@
 				</p>
 			</div>
 
-			<!-- Tabs -->
-			<div class="flex gap-2">
-				<button
-					onclick={() => (activeTab = 'new')}
-					class="flex-1 rounded-l-lg px-4 py-3 font-semibold transition-colors {activeTab === 'new'
-						? 'bg-pink-600 text-white'
-						: 'bg-gray-600 text-white hover:bg-gray-700'}"
-				>
-					New ({allContacts.new.length})
-				</button>
-				<button
-					onclick={() => (activeTab = 'common')}
-					class="flex-1 px-4 py-3 font-semibold transition-colors {activeTab === 'common'
-						? 'bg-pink-600 text-white'
-						: 'bg-gray-600 text-white hover:bg-gray-700'}"
-				>
-					In common ({allContacts.common.length})
-				</button>
-				<button
-					onclick={() => (activeTab = 'missing')}
-					class="flex-1 rounded-r-lg px-4 py-3 font-semibold transition-colors {activeTab ===
-					'missing'
-						? 'bg-pink-600 text-white'
-						: 'bg-gray-600 text-white hover:bg-gray-700'}"
-				>
-					Missing ({allContacts.missing.length})
-				</button>
-			</div>
-
-			<!-- Contact List -->
-			<div class={getActiveSelection().size > 0 ? 'mb-24' : ''}>
-				<!-- New Tab -->
-				<div class={activeTab === 'new' ? '' : 'hidden'}>
-					{#each allContacts.new as contact (contact.id)}
-						<div
-							onclick={() => toggleContactSelection(contact.id)}
-							class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode === 'full'
-								? 'cursor-pointer'
-								: 'cursor-default'} {selectedNewContacts.has(contact.id)
-								? 'border-l-4 border-l-pink-600 bg-gray-100'
-								: loginMode === 'full'
-									? 'border-l-4 border-l-transparent hover:bg-gray-100'
-									: 'border-l-4 border-l-transparent'}"
-						>
-							<img
-								src={contact.picture ||
-									'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
-								alt={contact.name || 'Anonymous'}
-								class="h-14 w-14 flex-shrink-0 rounded-full"
-							/>
-							<div class="flex-1">
-								<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-								<p class="text-sm text-gray-500">
-									{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
-								</p>
-								{#if contact.about}
-									<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
-								{/if}
-							</div>
-						</div>
-					{/each}
+			<div class="space-y-4">
+				<!-- Tabs -->
+				<div class="flex gap-2">
+					<button
+						onclick={() => (activeTab = 'new')}
+						class="flex-1 rounded-l-lg px-4 py-3 font-semibold transition-colors {activeTab ===
+						'new'
+							? 'bg-pink-600 text-white'
+							: 'bg-gray-600 text-white hover:bg-gray-700'}"
+					>
+						New ({allContacts.new.length})
+					</button>
+					<button
+						onclick={() => (activeTab = 'common')}
+						class="flex-1 px-4 py-3 font-semibold transition-colors {activeTab === 'common'
+							? 'bg-pink-600 text-white'
+							: 'bg-gray-600 text-white hover:bg-gray-700'}"
+					>
+						In common ({allContacts.common.length})
+					</button>
+					<button
+						onclick={() => (activeTab = 'missing')}
+						class="flex-1 rounded-r-lg px-4 py-3 font-semibold transition-colors {activeTab ===
+						'missing'
+							? 'bg-pink-600 text-white'
+							: 'bg-gray-600 text-white hover:bg-gray-700'}"
+					>
+						Missing ({allContacts.missing.length})
+					</button>
 				</div>
 
-				<!-- Common Tab -->
-				<div class={activeTab === 'common' ? '' : 'hidden'}>
-					{#each allContacts.common as contact (contact.id)}
-						<div
-							onclick={() => toggleContactSelection(contact.id)}
-							class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode === 'full'
-								? 'cursor-pointer'
-								: 'cursor-default'} {selectedCommonContacts.has(contact.id)
-								? 'border-l-4 border-l-pink-600 bg-gray-100'
-								: loginMode === 'full'
-									? 'border-l-4 border-l-transparent hover:bg-gray-100'
-									: 'border-l-4 border-l-transparent'}"
+				<!-- Select All Button -->
+				{#if loginMode === 'full' && allContacts[activeTab].length > 0}
+					<div class="flex justify-end rounded-lg bg-gray-100 px-4 py-2">
+						<button
+							onclick={handleSelectAll}
+							class="cursor-pointer text-sm font-medium text-gray-700 transition-colors hover:text-pink-600"
 						>
-							<img
-								src={contact.picture ||
-									'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
-								alt={contact.name || 'Anonymous'}
-								class="h-14 w-14 flex-shrink-0 rounded-full"
-							/>
-							<div class="flex-1">
-								<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-								<p class="text-sm text-gray-500">
-									{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
-								</p>
-								{#if contact.about}
-									<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
+							{isAllSelected() ? 'Deselect all' : 'Select all'}
+						</button>
+					</div>
+				{/if}
 
-				<!-- Missing Tab -->
-				<div class={activeTab === 'missing' ? '' : 'hidden'}>
-					{#each allContacts.missing as contact (contact.id)}
-						<div
-							onclick={() => toggleContactSelection(contact.id)}
-							class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode === 'full'
-								? 'cursor-pointer'
-								: 'cursor-default'} {selectedMissingContacts.has(contact.id)
-								? 'border-l-4 border-l-pink-600 bg-gray-100'
-								: loginMode === 'full'
-									? 'border-l-4 border-l-transparent hover:bg-gray-100'
-									: 'border-l-4 border-l-transparent'}"
-						>
-							<img
-								src={contact.picture ||
-									'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
-								alt={contact.name || 'Anonymous'}
-								class="h-14 w-14 flex-shrink-0 rounded-full"
-							/>
-							<div class="flex-1">
-								<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-								<p class="text-sm text-gray-500">
-									{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
-								</p>
-								{#if contact.about}
-									<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
-								{/if}
+				<!-- Contact List -->
+				<div class={getActiveSelection().size > 0 ? 'mb-24' : ''}>
+					<!-- New Tab -->
+					<div class={activeTab === 'new' ? '' : 'hidden'}>
+						{#each allContacts.new as contact (contact.id)}
+							<div
+								onclick={() => toggleContactSelection(contact.id)}
+								class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
+								'full'
+									? 'cursor-pointer'
+									: 'cursor-default'} {selectedNewContacts.has(contact.id)
+									? 'border-l-4 border-l-pink-600 bg-gray-100'
+									: loginMode === 'full'
+										? 'border-l-4 border-l-transparent hover:bg-gray-100'
+										: 'border-l-4 border-l-transparent'}"
+							>
+								<img
+									src={contact.picture ||
+										'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
+									alt={contact.name || 'Anonymous'}
+									class="h-14 w-14 flex-shrink-0 rounded-full"
+								/>
+								<div class="flex-1">
+									<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+									<p class="text-sm text-gray-500">
+										{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
+									</p>
+									{#if contact.about}
+										<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
+									{/if}
+								</div>
 							</div>
-						</div>
-					{/each}
+						{/each}
+					</div>
+
+					<!-- Common Tab -->
+					<div class={activeTab === 'common' ? '' : 'hidden'}>
+						{#each allContacts.common as contact (contact.id)}
+							<div
+								onclick={() => toggleContactSelection(contact.id)}
+								class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
+								'full'
+									? 'cursor-pointer'
+									: 'cursor-default'} {selectedCommonContacts.has(contact.id)
+									? 'border-l-4 border-l-pink-600 bg-gray-100'
+									: loginMode === 'full'
+										? 'border-l-4 border-l-transparent hover:bg-gray-100'
+										: 'border-l-4 border-l-transparent'}"
+							>
+								<img
+									src={contact.picture ||
+										'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
+									alt={contact.name || 'Anonymous'}
+									class="h-14 w-14 flex-shrink-0 rounded-full"
+								/>
+								<div class="flex-1">
+									<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+									<p class="text-sm text-gray-500">
+										{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
+									</p>
+									{#if contact.about}
+										<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+
+					<!-- Missing Tab -->
+					<div class={activeTab === 'missing' ? '' : 'hidden'}>
+						{#each allContacts.missing as contact (contact.id)}
+							<div
+								onclick={() => toggleContactSelection(contact.id)}
+								class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
+								'full'
+									? 'cursor-pointer'
+									: 'cursor-default'} {selectedMissingContacts.has(contact.id)
+									? 'border-l-4 border-l-pink-600 bg-gray-100'
+									: loginMode === 'full'
+										? 'border-l-4 border-l-transparent hover:bg-gray-100'
+										: 'border-l-4 border-l-transparent'}"
+							>
+								<img
+									src={contact.picture ||
+										'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
+									alt={contact.name || 'Anonymous'}
+									class="h-14 w-14 flex-shrink-0 rounded-full"
+								/>
+								<div class="flex-1">
+									<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+									<p class="text-sm text-gray-500">
+										{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
+									</p>
+									{#if contact.about}
+										<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
 				</div>
 			</div>
 		</div>

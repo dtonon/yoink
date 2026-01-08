@@ -74,6 +74,12 @@
 		goto('/');
 	}
 
+	function handleReplaceTarget() {
+		localStorage.removeItem('targetPubkey');
+		comparisonStore.set(null);
+		goto('/search');
+	}
+
 	function getActiveSelection(): Set<string> {
 		if (activeTab === 'new') return selectedNewContacts;
 		if (activeTab === 'common') return selectedCommonContacts;
@@ -293,7 +299,11 @@
 			});
 
 			// Fetch all profiles
-			const allPubkeys = [...newContactsPubkeys, ...commonContactsPubkeys, ...missingContactsPubkeys];
+			const allPubkeys = [
+				...newContactsPubkeys,
+				...commonContactsPubkeys,
+				...missingContactsPubkeys
+			];
 
 			const profilesMap = await fetchMultipleProfiles(allPubkeys);
 
@@ -352,7 +362,7 @@
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 				</svg>
 
-				<div class="flex items-center gap-3">
+				<div class="relative flex items-center gap-3">
 					<img
 						src={targetUser.picture ||
 							'https://api.dicebear.com/7.x/identicon/svg?seed=' + targetUser.pubkey}
@@ -365,6 +375,26 @@
 							{targetUser.npub.slice(0, 8)}...{targetUser.npub.slice(-5)}
 						</p>
 					</div>
+					<button
+						onclick={handleReplaceTarget}
+						class="absolute -top-2 -right-4 cursor-pointer rounded-full bg-white p-1.5 text-gray-600 shadow-md transition-colors hover:bg-gray-100 hover:text-accent"
+						title="Replace target profile"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+							/>
+						</svg>
+					</button>
 				</div>
 			</div>
 
@@ -563,13 +593,7 @@
 						fill="none"
 						viewBox="0 0 24 24"
 					>
-						<circle
-							class="opacity-25"
-							cx="12"
-							cy="12"
-							r="10"
-							stroke="currentColor"
-							stroke-width="4"
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
 						></circle>
 						<path
 							class="opacity-75"

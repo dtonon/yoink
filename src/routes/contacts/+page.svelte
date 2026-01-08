@@ -7,8 +7,10 @@
 		fetchUserProfile,
 		fetchContactList,
 		updateContactList,
+		calculateInteractionScores,
 		type UserProfile,
-		type ContactProfile
+		type ContactProfile,
+		type InteractionScore
 	} from '$lib/nostr';
 	import { comparisonStore } from '$lib/store';
 
@@ -19,6 +21,9 @@
 	let isLoading = $state(true);
 	let loginMode = $state<'full' | 'read'>('read');
 	let updateStatus = $state<'idle' | 'updating' | 'success'>('idle');
+	let sortMode = $state<'default' | 'interactions'>('default');
+	let isCalculatingScores = $state(false);
+	let interactionScores = $state<Map<string, InteractionScore>>(new Map());
 
 	let currentUser = $state<UserProfile | null>(null);
 	let targetUser = $state<UserProfile | null>(null);
@@ -70,14 +75,25 @@
 	function handleReadOnlyLogout() {
 		localStorage.removeItem('userPubkey');
 		localStorage.removeItem('loginMode');
+		sessionStorage.removeItem('interactionScores');
 		comparisonStore.set(null);
 		goto('/');
 	}
 
 	function handleReplaceTarget() {
 		localStorage.removeItem('targetPubkey');
+		sessionStorage.removeItem('interactionScores');
 		comparisonStore.set(null);
 		goto('/search');
+	}
+
+	function handleLogout() {
+		localStorage.removeItem('userPubkey');
+		localStorage.removeItem('loginMode');
+		localStorage.removeItem('targetPubkey');
+		sessionStorage.removeItem('interactionScores');
+		comparisonStore.set(null);
+		goto('/');
 	}
 
 	function getActiveSelection(): Set<string> {
@@ -131,6 +147,74 @@
 		const contacts = allContacts[activeTab];
 		const currentSelection = getActiveSelection();
 		return contacts.length > 0 && contacts.every((c) => currentSelection.has(c.id));
+	}
+
+	async function handleSortByInteractions() {
+		if (sortMode === 'interactions') {
+			// Switch back to default sort
+			sortMode = 'default';
+			return;
+		}
+
+		if (!targetUser) {
+			return;
+		}
+
+		// Check if scores are already cached in session
+		const cachedScores = sessionStorage.getItem('interactionScores');
+		if (cachedScores) {
+			try {
+				const parsed = JSON.parse(cachedScores);
+				const scoresMap = new Map<string, InteractionScore>(Object.entries(parsed));
+				interactionScores = scoresMap;
+				sortMode = 'interactions';
+				return;
+			} catch (error) {
+				console.error('Error parsing cached scores:', error);
+			}
+		}
+
+		// Calculate scores
+		isCalculatingScores = true;
+
+		try {
+			const allPubkeys = [
+				...allContacts.new.map((c) => c.id),
+				...allContacts.common.map((c) => c.id),
+				...allContacts.missing.map((c) => c.id)
+			];
+
+			const scores = await calculateInteractionScores(targetUser.pubkey, allPubkeys, 30);
+			interactionScores = scores;
+
+			// Cache in session storage
+			const scoresObject = Object.fromEntries(scores.entries());
+			sessionStorage.setItem('interactionScores', JSON.stringify(scoresObject));
+
+			sortMode = 'interactions';
+		} catch (error) {
+			console.error('Error calculating interaction scores:', error);
+			alert('Failed to calculate interaction scores. Please try again.');
+		} finally {
+			isCalculatingScores = false;
+		}
+	}
+
+	function getSortedContacts(contacts: ContactWithProfile[]): ContactWithProfile[] {
+		if (sortMode === 'default') {
+			return contacts;
+		}
+
+		// Sort by interaction score (highest first)
+		return [...contacts].sort((a, b) => {
+			const scoreA = interactionScores.get(a.id)?.score || 0;
+			const scoreB = interactionScores.get(b.id)?.score || 0;
+			return scoreB - scoreA;
+		});
+	}
+
+	function getInteractionScore(contactId: string): number {
+		return interactionScores.get(contactId)?.score || 0;
 	}
 
 	async function handleUpdate() {
@@ -340,8 +424,8 @@
 	{:else if currentUser && targetUser}
 		<div class="mx-auto max-w-2xl space-y-8">
 			<!-- Profile Comparison Header -->
-			<div class="flex items-center justify-center gap-6">
-				<div class="flex items-center gap-3">
+			<div class="flex items-center justify-center gap-10">
+				<div class="relative flex items-center gap-3">
 					<img
 						src={currentUser.picture ||
 							'https://api.dicebear.com/7.x/identicon/svg?seed=' + currentUser.pubkey}
@@ -356,6 +440,26 @@
 							{currentUser.npub.slice(0, 8)}...{currentUser.npub.slice(-5)}
 						</p>
 					</div>
+					<button
+						onclick={handleLogout}
+						class="absolute -top-2 -right-4 cursor-pointer rounded-full p-1.5 text-gray-600 shadow-md transition-colors hover:bg-white hover:text-red-600"
+						title="Logout and start fresh"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+							/>
+						</svg>
+					</button>
 				</div>
 
 				<svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -377,7 +481,7 @@
 					</div>
 					<button
 						onclick={handleReplaceTarget}
-						class="absolute -top-2 -right-4 cursor-pointer rounded-full bg-white p-1.5 text-gray-600 shadow-md transition-colors hover:bg-gray-100 hover:text-accent"
+						class="absolute -top-2 -right-4 cursor-pointer rounded-full p-1.5 text-gray-600 shadow-md transition-colors hover:bg-white hover:text-accent"
 						title="Replace target profile"
 					>
 						<svg
@@ -444,15 +548,70 @@
 					</button>
 				</div>
 
-				<!-- Select All Button -->
-				{#if loginMode === 'full' && allContacts[activeTab].length > 0}
-					<div class="flex justify-end rounded-lg bg-gray-100 px-4 py-2">
+				<!-- Select All and Sort Buttons -->
+				{#if allContacts[activeTab].length > 0}
+					<div class="flex justify-between rounded-lg bg-gray-100 px-4 py-2">
 						<button
-							onclick={handleSelectAll}
-							class="cursor-pointer text-sm font-medium text-gray-700 transition-colors hover:text-pink-600"
+							onclick={handleSortByInteractions}
+							disabled={isCalculatingScores}
+							class="cursor-pointer text-sm font-medium text-gray-700 transition-colors hover:text-pink-600 disabled:cursor-wait disabled:opacity-50"
 						>
-							{isAllSelected() ? 'Deselect all' : 'Select all'}
+							{#if isCalculatingScores}
+								<span class="flex items-center gap-1">
+									<svg
+										class="h-4 w-4 animate-spin"
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+									>
+										<circle
+											class="opacity-25"
+											cx="12"
+											cy="12"
+											r="10"
+											stroke="currentColor"
+											stroke-width="4"
+										></circle>
+										<path
+											class="opacity-75"
+											fill="currentColor"
+											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+										></path>
+									</svg>
+									Calculating...
+								</span>
+							{:else if sortMode === 'interactions'}
+								Sort by name
+							{:else}
+								<div class="flex items-center gap-1">
+									Sort by {targetUser?.name || 'Anonymous'}'s interactions
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										class="lucide lucide-sparkles text-primary"
+										><path
+											d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
+										></path><path d="M20 3v4"></path><path d="M22 5h-4"></path><path d="M4 17v2"
+										></path><path d="M5 18H3"></path></svg
+									>
+								</div>
+							{/if}
 						</button>
+						{#if loginMode === 'full'}
+							<button
+								onclick={handleSelectAll}
+								class="cursor-pointer text-sm font-medium text-gray-700 transition-colors hover:text-pink-600"
+							>
+								{isAllSelected() ? 'Deselect all' : 'Select all'}
+							</button>
+						{/if}
 					</div>
 				{/if}
 
@@ -460,7 +619,7 @@
 				<div class="overflow-hidden {getActiveSelection().size > 0 ? 'mb-24' : ''}">
 					<!-- New Tab -->
 					<div class={activeTab === 'new' ? 'block' : 'hidden'}>
-						{#each allContacts.new as contact (contact.id)}
+						{#each getSortedContacts(allContacts.new) as contact (contact.id)}
 							<div
 								onclick={() => toggleContactSelection(contact.id)}
 								class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
@@ -479,7 +638,17 @@
 									class="h-14 w-14 flex-shrink-0 rounded-full"
 								/>
 								<div class="flex-1">
-									<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+									<div class="flex items-center gap-2">
+										<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+										{#if sortMode === 'interactions' && getInteractionScore(contact.id) > 0}
+											<span
+												class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
+												title="Interaction score"
+											>
+												{getInteractionScore(contact.id)}
+											</span>
+										{/if}
+									</div>
 									<p class="text-sm text-gray-500">
 										{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
 									</p>
@@ -493,7 +662,7 @@
 
 					<!-- Common Tab -->
 					<div class={activeTab === 'common' ? 'block' : 'hidden'}>
-						{#each allContacts.common as contact (contact.id)}
+						{#each getSortedContacts(allContacts.common) as contact (contact.id)}
 							<div
 								onclick={() => toggleContactSelection(contact.id)}
 								class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
@@ -512,7 +681,17 @@
 									class="h-14 w-14 flex-shrink-0 rounded-full"
 								/>
 								<div class="flex-1">
-									<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+									<div class="flex items-center gap-2">
+										<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+										{#if sortMode === 'interactions' && getInteractionScore(contact.id) > 0}
+											<span
+												class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
+												title="Interaction score"
+											>
+												{getInteractionScore(contact.id)}
+											</span>
+										{/if}
+									</div>
 									<p class="text-sm text-gray-500">
 										{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
 									</p>
@@ -526,7 +705,7 @@
 
 					<!-- Missing Tab -->
 					<div class={activeTab === 'missing' ? 'block' : 'hidden'}>
-						{#each allContacts.missing as contact (contact.id)}
+						{#each getSortedContacts(allContacts.missing) as contact (contact.id)}
 							<div
 								onclick={() => toggleContactSelection(contact.id)}
 								class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
@@ -545,7 +724,17 @@
 									class="h-14 w-14 flex-shrink-0 rounded-full"
 								/>
 								<div class="flex-1">
-									<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+									<div class="flex items-center gap-2">
+										<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+										{#if sortMode === 'interactions' && getInteractionScore(contact.id) > 0}
+											<span
+												class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
+												title="Interaction score"
+											>
+												{getInteractionScore(contact.id)}
+											</span>
+										{/if}
+									</div>
 									<p class="text-sm text-gray-500">
 										{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
 									</p>

@@ -23,7 +23,6 @@
 	let updateStatus = $state<'idle' | 'updating' | 'success'>('idle');
 	let sortMode = $state<'default' | 'interactions'>('default');
 	let isCalculatingScores = $state(false);
-	let interactionScores = $state<Map<string, InteractionScore>>(new Map());
 
 	let currentUser = $state<UserProfile | null>(null);
 	let targetUser = $state<UserProfile | null>(null);
@@ -31,6 +30,7 @@
 
 	interface ContactWithProfile extends ContactProfile {
 		id: string;
+		interactionScore?: number;
 	}
 
 	let allContacts = $state<{
@@ -75,14 +75,12 @@
 	function handleReadOnlyLogout() {
 		localStorage.removeItem('userPubkey');
 		localStorage.removeItem('loginMode');
-		sessionStorage.removeItem('interactionScores');
 		comparisonStore.set(null);
 		goto('/');
 	}
 
 	function handleReplaceTarget() {
 		localStorage.removeItem('targetPubkey');
-		sessionStorage.removeItem('interactionScores');
 		comparisonStore.set(null);
 		goto('/search');
 	}
@@ -91,7 +89,6 @@
 		localStorage.removeItem('userPubkey');
 		localStorage.removeItem('loginMode');
 		localStorage.removeItem('targetPubkey');
-		sessionStorage.removeItem('interactionScores');
 		comparisonStore.set(null);
 		goto('/');
 	}
@@ -160,18 +157,16 @@
 			return;
 		}
 
-		// Check if scores are already cached in session
-		const cachedScores = sessionStorage.getItem('interactionScores');
-		if (cachedScores) {
-			try {
-				const parsed = JSON.parse(cachedScores);
-				const scoresMap = new Map<string, InteractionScore>(Object.entries(parsed));
-				interactionScores = scoresMap;
-				sortMode = 'interactions';
-				return;
-			} catch (error) {
-				console.error('Error parsing cached scores:', error);
-			}
+		// Check if scores are already calculated in memory
+		const scoresExist =
+			allContacts.new.some((c) => c.interactionScore !== undefined) ||
+			allContacts.common.some((c) => c.interactionScore !== undefined) ||
+			allContacts.missing.some((c) => c.interactionScore !== undefined);
+
+		if (scoresExist) {
+			// Scores already exist, just switch to interactions mode
+			sortMode = 'interactions';
+			return;
 		}
 
 		// Calculate scores
@@ -185,11 +180,17 @@
 			];
 
 			const scores = await calculateInteractionScores(targetUser.pubkey, allPubkeys, 30);
-			interactionScores = scores;
 
-			// Cache in session storage
-			const scoresObject = Object.fromEntries(scores.entries());
-			sessionStorage.setItem('interactionScores', JSON.stringify(scoresObject));
+			// Store scores directly in contact objects
+			allContacts.new.forEach((contact) => {
+				contact.interactionScore = scores.get(contact.id)?.score || 0;
+			});
+			allContacts.common.forEach((contact) => {
+				contact.interactionScore = scores.get(contact.id)?.score || 0;
+			});
+			allContacts.missing.forEach((contact) => {
+				contact.interactionScore = scores.get(contact.id)?.score || 0;
+			});
 
 			sortMode = 'interactions';
 		} catch (error) {
@@ -207,14 +208,14 @@
 
 		// Sort by interaction score (highest first)
 		return [...contacts].sort((a, b) => {
-			const scoreA = interactionScores.get(a.id)?.score || 0;
-			const scoreB = interactionScores.get(b.id)?.score || 0;
+			const scoreA = a.interactionScore || 0;
+			const scoreB = b.interactionScore || 0;
 			return scoreB - scoreA;
 		});
 	}
 
-	function getInteractionScore(contactId: string): number {
-		return interactionScores.get(contactId)?.score || 0;
+	function getInteractionScore(contact: ContactWithProfile): number {
+		return contact.interactionScore || 0;
 	}
 
 	async function handleUpdate() {
@@ -640,12 +641,12 @@
 								<div class="flex-1">
 									<div class="flex items-center gap-2">
 										<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-										{#if sortMode === 'interactions' && getInteractionScore(contact.id) > 0}
+										{#if sortMode === 'interactions' && getInteractionScore(contact) > 0}
 											<span
 												class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
 												title="Interaction score"
 											>
-												{getInteractionScore(contact.id)}
+												{getInteractionScore(contact)}
 											</span>
 										{/if}
 									</div>
@@ -683,12 +684,12 @@
 								<div class="flex-1">
 									<div class="flex items-center gap-2">
 										<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-										{#if sortMode === 'interactions' && getInteractionScore(contact.id) > 0}
+										{#if sortMode === 'interactions' && getInteractionScore(contact) > 0}
 											<span
 												class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
 												title="Interaction score"
 											>
-												{getInteractionScore(contact.id)}
+												{getInteractionScore(contact)}
 											</span>
 										{/if}
 									</div>
@@ -726,12 +727,12 @@
 								<div class="flex-1">
 									<div class="flex items-center gap-2">
 										<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-										{#if sortMode === 'interactions' && getInteractionScore(contact.id) > 0}
+										{#if sortMode === 'interactions' && getInteractionScore(contact) > 0}
 											<span
 												class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
 												title="Interaction score"
 											>
-												{getInteractionScore(contact.id)}
+												{getInteractionScore(contact)}
 											</span>
 										{/if}
 									</div>

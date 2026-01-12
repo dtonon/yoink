@@ -265,7 +265,7 @@ export async function calculateInteractionScores(
 	daysBack: number = 30
 ): Promise<Map<string, InteractionScore>> {
 	const p = getPool();
-	const scores = new Map<string, RelevanceScore>();
+	const scores = new Map<string, InteractionScore>();
 
 	// Initialize scores
 	contactPubkeys.forEach(pubkey => {

@@ -203,7 +203,23 @@
 
 	function getSortedContacts(contacts: ContactWithProfile[]): ContactWithProfile[] {
 		if (sortMode === 'default') {
-			return contacts;
+			// Sort alphabetically by name, with anonymous contacts at the bottom
+			return [...contacts].sort((a, b) => {
+				const nameA = a.name || '';
+				const nameB = b.name || '';
+
+				// If both have no name, maintain order
+				if (!nameA && !nameB) return 0;
+
+				// If only A has no name, put it after B
+				if (!nameA) return 1;
+
+				// If only B has no name, put it after A
+				if (!nameB) return -1;
+
+				// Both have names, sort alphabetically (case-insensitive)
+				return nameA.toLowerCase().localeCompare(nameB.toLowerCase());
+			});
 		}
 
 		// Sort by interaction score (highest first)

@@ -638,7 +638,15 @@
 					<div class={activeTab === 'new' ? 'block' : 'hidden'}>
 						{#each getSortedContacts(allContacts.new) as contact (contact.id)}
 							<div
+								role="button"
+								tabindex={loginMode === 'full' ? 0 : -1}
 								onclick={() => toggleContactSelection(contact.id)}
+								onkeydown={(e) => {
+									if (loginMode === 'full' && (e.key === 'Enter' || e.key === ' ')) {
+										e.preventDefault();
+										toggleContactSelection(contact.id);
+									}
+								}}
 								class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
 								'full'
 									? 'cursor-pointer'
@@ -681,7 +689,15 @@
 					<div class={activeTab === 'common' ? 'block' : 'hidden'}>
 						{#each getSortedContacts(allContacts.common) as contact (contact.id)}
 							<div
+								role="button"
+								tabindex={loginMode === 'full' ? 0 : -1}
 								onclick={() => toggleContactSelection(contact.id)}
+								onkeydown={(e) => {
+									if (loginMode === 'full' && (e.key === 'Enter' || e.key === ' ')) {
+										e.preventDefault();
+										toggleContactSelection(contact.id);
+									}
+								}}
 								class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
 								'full'
 									? 'cursor-pointer'
@@ -724,7 +740,15 @@
 					<div class={activeTab === 'missing' ? 'block' : 'hidden'}>
 						{#each getSortedContacts(allContacts.missing) as contact (contact.id)}
 							<div
+								role="button"
+								tabindex={loginMode === 'full' ? 0 : -1}
 								onclick={() => toggleContactSelection(contact.id)}
+								onkeydown={(e) => {
+									if (loginMode === 'full' && (e.key === 'Enter' || e.key === ' ')) {
+										e.preventDefault();
+										toggleContactSelection(contact.id);
+									}
+								}}
 								class="flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
 								'full'
 									? 'cursor-pointer'

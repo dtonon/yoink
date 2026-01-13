@@ -106,10 +106,10 @@
 <div class="flex min-h-screen items-center justify-center px-4">
 	<div class="w-full max-w-md space-y-8">
 		<div class="text-center">
-			<h1 class="mb-4 text-4xl font-bold text-gray-900">Nostr Contacts Manager</h1>
+			<h1 class="mb-4 text-4xl font-bold text-gray-900">Yoink</h1>
 			<p class="leading-5 text-gray-600">
-				Compare your Nostr contacts with others, discover new people to follow, and improve your
-				contact list with ease. Add new contacts or unfollow with just a few clicks!
+				Compare your Nostr contacts with others, discover new people to follow, and yoink their best
+				contacts with just a few clicks!
 			</p>
 		</div>
 

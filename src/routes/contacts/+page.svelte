@@ -13,6 +13,7 @@
 		type InteractionScore
 	} from '$lib/nostr';
 	import { comparisonStore } from '$lib/store';
+	import { logout } from '$lib/auth';
 
 	let activeTab = $state<'new' | 'common' | 'missing'>('new');
 	let selectedNewContacts = $state<Set<string>>(new Set());
@@ -73,9 +74,7 @@
 	}
 
 	function handleReadOnlyLogout() {
-		localStorage.removeItem('userPubkey');
-		localStorage.removeItem('loginMode');
-		comparisonStore.set(null);
+		logout();
 		goto('/');
 	}
 
@@ -86,10 +85,7 @@
 	}
 
 	function handleLogout() {
-		localStorage.removeItem('userPubkey');
-		localStorage.removeItem('loginMode');
-		localStorage.removeItem('targetPubkey');
-		comparisonStore.set(null);
+		logout();
 		goto('/');
 	}
 

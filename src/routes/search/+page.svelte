@@ -173,6 +173,7 @@
 					type="text"
 					bind:value={compareNpub}
 					placeholder="npub, nprofile, or NIP-05 (e.g., dtonon.com)"
+					onkeydown={(e) => e.key === 'Enter' && handleLoadContact()}
 					class="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-300 focus:outline-none"
 				/>
 

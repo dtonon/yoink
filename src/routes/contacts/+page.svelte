@@ -630,246 +630,102 @@
 
 				<!-- Contact List -->
 				<div class="overflow-hidden {getActiveSelection().size > 0 ? 'mb-24' : ''}">
+					{#snippet contactRow(contact: ContactWithProfile, isSelected: boolean)}
+						<div
+							role="button"
+							tabindex={loginMode === 'full' ? 0 : -1}
+							onclick={() => toggleContactSelection(contact.id)}
+							onkeydown={(e) => {
+								if (loginMode === 'full' && (e.key === 'Enter' || e.key === ' ')) {
+									e.preventDefault();
+									toggleContactSelection(contact.id);
+								}
+							}}
+							class="relative flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
+							'full'
+								? 'cursor-pointer'
+								: 'cursor-default'} {isSelected
+								? 'border-l-4 border-l-pink-600 bg-gray-100'
+								: loginMode === 'full'
+									? 'border-l-4 border-l-transparent hover:bg-gray-100'
+									: 'border-l-4 border-l-transparent'}"
+						>
+							<img
+								src={contact.picture ||
+									'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
+								alt={contact.name || 'Anonymous'}
+								class="h-14 w-14 flex-shrink-0 rounded-full"
+							/>
+							<div class="flex-1">
+								<div class="flex items-center gap-2">
+									<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
+									{#if sortMode === 'interactions' && getInteractionScore(contact) > 0}
+										<span
+											class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
+											title="Interaction score"
+										>
+											{getInteractionScore(contact)}
+										</span>
+									{/if}
+								</div>
+								<p class="text-sm text-gray-500">
+									{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
+								</p>
+								{#if contact.about}
+									<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
+								{/if}
+							</div>
+							<a
+								href="https://fevela.me/{contact.npub}"
+								target="_blank"
+								rel="noopener noreferrer"
+								onclick={(e) => e.stopPropagation()}
+								class="absolute top-4 right-4 text-gray-500 transition-colors hover:text-pink-600"
+								title="View profile"
+								aria-label="View {contact.name || 'Anonymous'}'s profile"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+									/>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+									/>
+								</svg>
+							</a>
+						</div>
+					{/snippet}
+
 					<!-- New Tab -->
 					<div class={activeTab === 'new' ? 'block' : 'hidden'}>
 						{#each getSortedContacts(allContacts.new) as contact (contact.id)}
-							<div
-								role="button"
-								tabindex={loginMode === 'full' ? 0 : -1}
-								onclick={() => toggleContactSelection(contact.id)}
-								onkeydown={(e) => {
-									if (loginMode === 'full' && (e.key === 'Enter' || e.key === ' ')) {
-										e.preventDefault();
-										toggleContactSelection(contact.id);
-									}
-								}}
-								class="relative flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
-								'full'
-									? 'cursor-pointer'
-									: 'cursor-default'} {selectedNewContacts.has(contact.id)
-									? 'border-l-4 border-l-pink-600 bg-gray-100'
-									: loginMode === 'full'
-										? 'border-l-4 border-l-transparent hover:bg-gray-100'
-										: 'border-l-4 border-l-transparent'}"
-							>
-								<img
-									src={contact.picture ||
-										'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
-									alt={contact.name || 'Anonymous'}
-									class="h-14 w-14 flex-shrink-0 rounded-full"
-								/>
-								<div class="flex-1">
-									<div class="flex items-center gap-2">
-										<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-										{#if sortMode === 'interactions' && getInteractionScore(contact) > 0}
-											<span
-												class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
-												title="Interaction score"
-											>
-												{getInteractionScore(contact)}
-											</span>
-										{/if}
-									</div>
-									<p class="text-sm text-gray-500">
-										{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
-									</p>
-									{#if contact.about}
-										<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
-									{/if}
-								</div>
-								<a
-									href="https://fevela.me/{contact.npub}"
-									target="_blank"
-									rel="noopener noreferrer"
-									onclick={(e) => e.stopPropagation()}
-									class="absolute top-4 right-4 text-gray-500 transition-colors hover:text-pink-600"
-									title="View profile"
-									aria-label="View {contact.name || 'Anonymous'}'s profile"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-										/>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-										/>
-									</svg>
-								</a>
-							</div>
+							{@render contactRow(contact, selectedNewContacts.has(contact.id))}
 						{/each}
 					</div>
 
 					<!-- Common Tab -->
 					<div class={activeTab === 'common' ? 'block' : 'hidden'}>
 						{#each getSortedContacts(allContacts.common) as contact (contact.id)}
-							<div
-								role="button"
-								tabindex={loginMode === 'full' ? 0 : -1}
-								onclick={() => toggleContactSelection(contact.id)}
-								onkeydown={(e) => {
-									if (loginMode === 'full' && (e.key === 'Enter' || e.key === ' ')) {
-										e.preventDefault();
-										toggleContactSelection(contact.id);
-									}
-								}}
-								class="relative flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
-								'full'
-									? 'cursor-pointer'
-									: 'cursor-default'} {selectedCommonContacts.has(contact.id)
-									? 'border-l-4 border-l-pink-600 bg-gray-100'
-									: loginMode === 'full'
-										? 'border-l-4 border-l-transparent hover:bg-gray-100'
-										: 'border-l-4 border-l-transparent'}"
-							>
-								<img
-									src={contact.picture ||
-										'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
-									alt={contact.name || 'Anonymous'}
-									class="h-14 w-14 flex-shrink-0 rounded-full"
-								/>
-								<div class="flex-1">
-									<div class="flex items-center gap-2">
-										<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-										{#if sortMode === 'interactions' && getInteractionScore(contact) > 0}
-											<span
-												class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
-												title="Interaction score"
-											>
-												{getInteractionScore(contact)}
-											</span>
-										{/if}
-									</div>
-									<p class="text-sm text-gray-500">
-										{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
-									</p>
-									{#if contact.about}
-										<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
-									{/if}
-								</div>
-								<a
-									href="https://fevela.me/{contact.npub}"
-									target="_blank"
-									rel="noopener noreferrer"
-									onclick={(e) => e.stopPropagation()}
-									class="absolute top-4 right-4 text-gray-500 transition-colors hover:text-pink-600"
-									title="View profile"
-									aria-label="View {contact.name || 'Anonymous'}'s profile"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-										/>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-										/>
-									</svg>
-								</a>
-							</div>
+							{@render contactRow(contact, selectedCommonContacts.has(contact.id))}
 						{/each}
 					</div>
 
 					<!-- Missing Tab -->
 					<div class={activeTab === 'missing' ? 'block' : 'hidden'}>
 						{#each getSortedContacts(allContacts.missing) as contact (contact.id)}
-							<div
-								role="button"
-								tabindex={loginMode === 'full' ? 0 : -1}
-								onclick={() => toggleContactSelection(contact.id)}
-								onkeydown={(e) => {
-									if (loginMode === 'full' && (e.key === 'Enter' || e.key === ' ')) {
-										e.preventDefault();
-										toggleContactSelection(contact.id);
-									}
-								}}
-								class="relative flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
-								'full'
-									? 'cursor-pointer'
-									: 'cursor-default'} {selectedMissingContacts.has(contact.id)
-									? 'border-l-4 border-l-pink-600 bg-gray-100'
-									: loginMode === 'full'
-										? 'border-l-4 border-l-transparent hover:bg-gray-100'
-										: 'border-l-4 border-l-transparent'}"
-							>
-								<img
-									src={contact.picture ||
-										'https://api.dicebear.com/7.x/identicon/svg?seed=' + contact.pubkey}
-									alt={contact.name || 'Anonymous'}
-									class="h-14 w-14 flex-shrink-0 rounded-full"
-								/>
-								<div class="flex-1">
-									<div class="flex items-center gap-2">
-										<h3 class="text-xl font-medium text-gray-900">{contact.name || 'Anonymous'}</h3>
-										{#if sortMode === 'interactions' && getInteractionScore(contact) > 0}
-											<span
-												class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-medium text-pink-700"
-												title="Interaction score"
-											>
-												{getInteractionScore(contact)}
-											</span>
-										{/if}
-									</div>
-									<p class="text-sm text-gray-500">
-										{contact.npub.slice(0, 8)}...{contact.npub.slice(-5)}
-									</p>
-									{#if contact.about}
-										<p class="mt-1 line-clamp-2 leading-5 text-gray-700">{contact.about}</p>
-									{/if}
-								</div>
-								<a
-									href="https://fevela.me/{contact.npub}"
-									target="_blank"
-									rel="noopener noreferrer"
-									onclick={(e) => e.stopPropagation()}
-									class="absolute top-4 right-4 text-gray-500 transition-colors hover:text-pink-600"
-									title="View profile"
-									aria-label="View {contact.name || 'Anonymous'}'s profile"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-										/>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-										/>
-									</svg>
-								</a>
-							</div>
+							{@render contactRow(contact, selectedMissingContacts.has(contact.id))}
 						{/each}
 					</div>
 				</div>

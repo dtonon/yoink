@@ -1,22 +1,10 @@
-# sv
+# Yoink
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+See someone's Nostr following list you like? Yoink it. Compare contacts, discover new people, and grab the best follows with one click.
 
-## Creating a project
+![](assets/screenshot.png)
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-npx sv create --template minimal --types ts --add tailwindcss="plugins:none" prettier eslint --install npm yoink
-```
+You can also take inspiration from the "Missing" section and use it to remove useless contacts ;)
 
 ## Developing
 

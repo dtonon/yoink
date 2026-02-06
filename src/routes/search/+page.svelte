@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { nip19 } from 'nostr-tools';
+	import { queryProfile } from 'nostr-tools/nip05';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { fetchUserProfile, fetchContactList, type UserProfile } from '$lib/nostr';
@@ -41,22 +42,52 @@
 		goto('/');
 	}
 
-	function handleLoadContact() {
+	async function handleLoadContact() {
 		errorMessage = '';
+		isLoading = true;
 
 		if (!compareNpub.trim()) {
-			errorMessage = 'Please enter a npub or nprofile';
+			errorMessage = 'Please enter a npub, nprofile, or NIP-05 identifier';
+			isLoading = false;
 			return;
 		}
 
+		const input = compareNpub.trim();
+
+		// Check if input looks like an email (name@domain.com)
+		const looksLikeEmail = input.includes('@');
+
+		// Check if input looks like a domain (domain.com)
+		const looksLikeDomain =
+			input.includes('.') && !input.startsWith('npub') && !input.startsWith('nprofile');
+
 		try {
-			const decoded = nip19.decode(compareNpub.trim());
-			if (decoded.type !== 'npub' && decoded.type !== 'nprofile') {
-				errorMessage = 'Invalid npub or nprofile';
+			let targetPubkey: string | undefined;
+
+			if (looksLikeEmail || looksLikeDomain) {
+				// NIP-05 lookup
+				const profile = await queryProfile(input);
+				if (profile && profile.pubkey) {
+					targetPubkey = profile.pubkey;
+				} else {
+					errorMessage = 'NIP-05 identifier not found or invalid';
+					isLoading = false;
+					return;
+				}
+			} else if (input.startsWith('npub') || input.startsWith('nprofile')) {
+				// npub/nprofile decoding
+				const decoded = nip19.decode(input);
+				if (decoded.type !== 'npub' && decoded.type !== 'nprofile') {
+					errorMessage = 'Invalid npub or nprofile';
+					isLoading = false;
+					return;
+				}
+				targetPubkey = decoded.type === 'npub' ? decoded.data : decoded.data.pubkey;
+			} else {
+				errorMessage = 'Invalid format. Please enter a npub, nprofile, or NIP-05 identifier';
+				isLoading = false;
 				return;
 			}
-
-			const targetPubkey = decoded.type === 'npub' ? decoded.data : decoded.data.pubkey;
 
 			// Save target pubkey to localStorage
 			localStorage.setItem('targetPubkey', targetPubkey);
@@ -64,8 +95,9 @@
 			// Navigate to contacts page (will load data there)
 			goto('/contacts');
 		} catch (error) {
-			console.error('Error decoding npub:', error);
-			errorMessage = 'Invalid npub or nprofile format';
+			console.error('Error resolving user:', error);
+			errorMessage = 'Invalid format or lookup failed. Please try again.';
+			isLoading = false;
 		}
 	}
 </script>
@@ -140,7 +172,7 @@
 				<input
 					type="text"
 					bind:value={compareNpub}
-					placeholder="npub or nprofile"
+					placeholder="npub, nprofile, or NIP-05 (e.g., dtonon.com)"
 					class="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-300 focus:outline-none"
 				/>
 

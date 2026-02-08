@@ -99,7 +99,7 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+<div class="flex min-h-screen items-center justify-center bg-gray-50 px-8 sm:px-4">
 	{#if isFetchingProfile}
 		<div class="text-center">
 			<p class="text-lg text-gray-600">Loading your profile...</p>
@@ -149,8 +149,8 @@
 					It has been updated on <span class="font-medium">{currentUser.lastUpdated}</span>
 				{/if}
 				and it contains <span class="font-medium">{currentUser.contactsCount}</span>
-				{currentUser.contactsCount === 1 ? 'person' : 'people'}. Now tell me which profile you want
-				to compare it with:
+				{currentUser.contactsCount === 1 ? 'person' : 'people'}.
+				<br class="hidden sm:block" />Now tell me which profile you want to compare it with:
 			</p>
 
 			{#if errorMessage}

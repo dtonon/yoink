@@ -55,10 +55,10 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+<div class="flex min-h-screen items-center justify-center bg-gray-50 px-8 sm:px-4">
 	<div class="w-full max-w-xl space-y-6">
 		<div class="my-10 space-y-6">
-			<p class="font-medium leading-6 text-gray-900">
+			<p class="leading-6 font-medium text-gray-900">
 				Compare your contact list with that of one of the following people:
 			</p>
 
@@ -87,7 +87,7 @@
 									handleSelectSuggestion(profile);
 								}
 							}}
-							class="relative flex cursor-pointer gap-4 border-b-3 border-gray-200 p-4 transition-all hover:bg-gray-100"
+							class="relative flex cursor-pointer gap-4 border-b-3 border-gray-200 py-4 transition-all hover:bg-gray-100 sm:px-4"
 						>
 							<img
 								src={profile.picture ||

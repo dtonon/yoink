@@ -103,7 +103,7 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center px-4">
+<div class="flex min-h-screen items-center justify-center px-8 sm:px-4">
 	<div class="w-full max-w-md space-y-8">
 		<div class="text-center">
 			<h1 class="mb-4 text-4xl font-bold text-gray-900">Yoink</h1>
@@ -128,8 +128,8 @@
 				class="cursor-pointer rounded-lg bg-accent px-8 py-4 font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				<div class="text-center">
-					<div class="text-2xl">Start managing your contacts</div>
-					<div class="text-sm">
+					<div class="text-2xl leading-6">Start managing your contacts</div>
+					<div class="mt-2 text-sm">
 						{#if isLoggingIn}
 							Logging in...
 						{:else if hasNip07Extension}

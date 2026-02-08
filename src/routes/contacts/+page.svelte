@@ -430,24 +430,24 @@
 </script>
 
 {#if isLoading}
-	<div class="fixed inset-0 bg-gray-50 px-4 py-20">
+	<div class="fixed inset-0 bg-gray-50 px-8 py-8 sm:px-4 sm:py-20">
 		<div class="flex h-full items-center justify-center">
 			<p class="text-lg text-gray-600">Loading contacts...</p>
 		</div>
 	</div>
 {:else if currentUser && targetUser}
-	<div class="min-h-screen bg-gray-50 px-4 py-20">
+	<div class="min-h-screen bg-gray-50 px-8 py-8 sm:px-4 sm:py-20">
 		<div class="mx-auto max-w-2xl space-y-8">
 			<!-- Profile Comparison Header -->
-			<div class="flex items-center justify-center gap-10">
-				<div class="relative flex items-center gap-3">
+			<div class="flex flex-col items-center justify-center gap-0 sm:flex-row sm:gap-4 sm:gap-10">
+				<div class="relative flex w-full items-center gap-3 sm:w-auto">
 					<img
 						src={currentUser.picture ||
 							'https://api.dicebear.com/7.x/identicon/svg?seed=' + currentUser.pubkey}
 						alt={currentUser.name || 'User'}
 						class="h-16 w-16 rounded-full"
 					/>
-					<div>
+					<div class="flex-1 sm:flex-initial">
 						<h2 class="text-xl font-medium text-gray-900">
 							{currentUser.name || 'Anonymous'}
 						</h2>
@@ -457,7 +457,7 @@
 					</div>
 					<button
 						onclick={handleLogout}
-						class="absolute -top-2 -right-4 cursor-pointer rounded-full p-1.5 text-gray-600 shadow-md transition-colors hover:bg-white hover:text-red-600"
+						class="cursor-pointer rounded-full p-1.5 text-gray-600 shadow-md transition-colors hover:bg-white hover:text-red-600"
 						title="Logout and start fresh"
 					>
 						<svg
@@ -477,18 +477,23 @@
 					</button>
 				</div>
 
-				<svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg
+					class="h-8 w-8 rotate-90 text-gray-400 sm:rotate-0"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 				</svg>
 
-				<div class="relative flex items-center gap-3">
+				<div class="relative flex w-full items-center gap-3 sm:w-auto">
 					<img
 						src={targetUser.picture ||
 							'https://api.dicebear.com/7.x/identicon/svg?seed=' + targetUser.pubkey}
 						alt={targetUser.name || 'User'}
 						class="h-16 w-16 rounded-full"
 					/>
-					<div>
+					<div class="flex-1 sm:flex-initial">
 						<h2 class="text-xl font-medium text-gray-900">{targetUser.name || 'Anonymous'}</h2>
 						<p class="text-sm text-gray-500">
 							{targetUser.npub.slice(0, 8)}...{targetUser.npub.slice(-5)}
@@ -496,7 +501,7 @@
 					</div>
 					<button
 						onclick={handleReplaceTarget}
-						class="absolute -top-2 -right-4 cursor-pointer rounded-full p-1.5 text-gray-600 shadow-md transition-colors hover:bg-white hover:text-accent"
+						class="cursor-pointer rounded-full p-1.5 text-gray-600 shadow-md transition-colors hover:bg-white hover:text-accent"
 						title="Replace target profile"
 					>
 						<svg
@@ -534,32 +539,42 @@
 
 			<div class="space-y-4">
 				<!-- Tabs -->
-				<div class="flex gap-2">
+				<div class="flex gap-1">
 					<button
 						onclick={() => (activeTab = 'new')}
-						class="flex-1 rounded-l-lg px-4 py-3 font-semibold transition-colors {activeTab ===
+						class="flex flex-1 cursor-pointer flex-col items-center rounded-l-lg px-4 py-3 font-semibold transition-colors sm:flex-row sm:justify-between {activeTab ===
 						'new'
 							? 'bg-pink-600 text-white'
 							: 'bg-gray-600 text-white hover:bg-gray-700'}"
 					>
-						New ({allContacts.new.length})
+						<span>New</span>
+						<div class="text-sm">
+							{allContacts.new.length}
+						</div>
 					</button>
 					<button
 						onclick={() => (activeTab = 'common')}
-						class="flex-1 px-4 py-3 font-semibold transition-colors {activeTab === 'common'
+						class="flex flex-1 cursor-pointer flex-col items-center px-4 py-3 font-semibold transition-colors sm:flex-row sm:justify-between {activeTab ===
+						'common'
 							? 'bg-pink-600 text-white'
 							: 'bg-gray-600 text-white hover:bg-gray-700'}"
 					>
-						In common ({allContacts.common.length})
+						<span>Common</span>
+						<div class="text-sm">
+							{allContacts.common.length}
+						</div>
 					</button>
 					<button
 						onclick={() => (activeTab = 'missing')}
-						class="flex-1 rounded-r-lg px-4 py-3 font-semibold transition-colors {activeTab ===
+						class="flex flex-1 cursor-pointer flex-col items-center rounded-r-lg px-4 py-3 font-semibold transition-colors sm:flex-row sm:justify-between {activeTab ===
 						'missing'
 							? 'bg-pink-600 text-white'
 							: 'bg-gray-600 text-white hover:bg-gray-700'}"
 					>
-						Missing ({allContacts.missing.length})
+						<span>Missing</span>
+						<div class="text-sm">
+							{allContacts.missing.length}
+						</div>
 					</button>
 				</div>
 
@@ -569,7 +584,7 @@
 						<button
 							onclick={handleSortByInteractions}
 							disabled={isCalculatingScores}
-							class="cursor-pointer text-sm font-medium text-gray-700 transition-colors hover:text-pink-600 disabled:cursor-wait disabled:opacity-50"
+							class="cursor-pointer text-sm font-medium text-gray-700 transition-colors hover:text-accent-hover disabled:cursor-wait disabled:opacity-50"
 						>
 							{#if isCalculatingScores}
 								<span class="flex items-center gap-1">
@@ -622,7 +637,7 @@
 						{#if loginMode === 'full'}
 							<button
 								onclick={handleSelectAll}
-								class="cursor-pointer text-sm font-medium text-gray-700 transition-colors hover:text-pink-600"
+								class="cursor-pointer text-sm font-medium text-gray-700 transition-colors hover:text-accent-hover"
 							>
 								{isAllSelected() ? 'Deselect all' : 'Select all'}
 							</button>
@@ -643,7 +658,7 @@
 									toggleContactSelection(contact.id);
 								}
 							}}
-							class="relative flex gap-4 border-b-3 border-gray-200 p-4 transition-all {loginMode ===
+							class="relative flex gap-4 border-b-3 border-gray-200 px-2 py-4 transition-all sm:px-4 {loginMode ===
 							'full'
 								? 'cursor-pointer'
 								: 'cursor-default'} {isSelected
@@ -682,7 +697,7 @@
 								target="_blank"
 								rel="noopener noreferrer"
 								onclick={(e) => e.stopPropagation()}
-								class="absolute top-4 right-4 text-gray-500 transition-colors hover:text-pink-600"
+								class="absolute top-4 right-4 text-gray-500 transition-colors hover:text-accent-hover"
 								title="View profile"
 								aria-label="View {contact.name || 'Anonymous'}'s profile"
 							>
@@ -738,7 +753,7 @@
 
 <!-- Action Button - Fixed at Bottom -->
 {#if loginMode === 'read'}
-	<div class="fixed right-0 bottom-0 left-0 flex justify-center px-4">
+	<div class="fixed right-0 bottom-0 left-0 flex justify-center px-8">
 		<button
 			onclick={handleReadOnlyLogout}
 			class="w-full max-w-2xl cursor-pointer rounded-t-lg bg-gray-700 px-6 py-4 font-semibold text-white transition-colors hover:bg-gray-800"
@@ -753,7 +768,7 @@
 		</button>
 	</div>
 {:else if getActiveSelection().size > 0}
-	<div class="fixed right-0 bottom-0 left-0 flex justify-center px-4">
+	<div class="fixed right-0 bottom-0 left-0 flex justify-center px-8">
 		<button
 			onclick={handleUpdate}
 			disabled={updateStatus === 'updating'}

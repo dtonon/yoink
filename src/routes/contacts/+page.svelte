@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
-	import { goto, afterNavigate } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
 	import {
 		fetchMultipleProfiles,
@@ -283,13 +283,6 @@
 		}
 	}
 
-	function scrollToTop() {
-		// Multiple methods to ensure scroll works across browsers
-		window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-		document.documentElement.scrollTop = 0;
-		document.body.scrollTop = 0;
-	}
-
 	async function recomputeContacts() {
 		if (!currentUser || !targetUser) return;
 
@@ -342,11 +335,8 @@
 		};
 	}
 
-	afterNavigate(() => {
-		scrollToTop();
-	});
-
 	onMount(async () => {
+		// Get login mode
 		loginMode = (localStorage.getItem('loginMode') as 'full' | 'read') || 'read';
 
 		// Get pubkeys from localStorage
@@ -431,12 +421,6 @@
 			};
 
 			isLoading = false;
-
-			// Wait for DOM to fully render, then scroll to top
-			await tick();
-			requestAnimationFrame(() => {
-				scrollToTop();
-			});
 		} catch (error) {
 			console.error('Error loading comparison:', error);
 			isLoading = false;

@@ -445,12 +445,14 @@
 	});
 </script>
 
-<div class="min-h-screen bg-gray-50 px-4 py-20">
-	{#if isLoading}
-		<div class="flex min-h-screen items-center justify-center">
+{#if isLoading}
+	<div class="fixed inset-0 bg-gray-50 px-4 py-20">
+		<div class="flex h-full items-center justify-center">
 			<p class="text-lg text-gray-600">Loading contacts...</p>
 		</div>
-	{:else if currentUser && targetUser}
+	</div>
+{:else if currentUser && targetUser}
+	<div class="min-h-screen bg-gray-50 px-4 py-20">
 		<div class="mx-auto max-w-2xl space-y-8">
 			<!-- Profile Comparison Header -->
 			<div class="flex items-center justify-center gap-10">
@@ -747,8 +749,8 @@
 				</div>
 			</div>
 		</div>
-	{/if}
-</div>
+	</div>
+{/if}
 
 <!-- Action Button - Fixed at Bottom -->
 {#if loginMode === 'read'}

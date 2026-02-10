@@ -5,7 +5,10 @@ const DEFAULT_RELAYS = [
 	'wss://relay.damus.io',
 	'wss://relay.nostr.band',
 	'wss://nos.lol',
-	'wss://relay.primal.net'
+	'wss://relay.primal.net',
+	'wss://nostr.wine',
+	'wss://nostr.mom',
+	'wss://purplepag.es'
 ];
 
 let pool: SimplePool | null = null;
@@ -58,7 +61,7 @@ export async function fetchUserProfile(pubkeyHex: string): Promise<UserProfile> 
 
 	// Parse contacts
 	if (contactsEvent) {
-		const contacts = contactsEvent.tags.filter(tag => tag[0] === 'p');
+		const contacts = contactsEvent.tags.filter((tag) => tag[0] === 'p');
 		profile.contactsCount = contacts.length;
 		profile.lastUpdated = new Date(contactsEvent.created_at * 1000).toLocaleString('en-US', {
 			month: 'long',
@@ -85,7 +88,7 @@ export async function fetchContactList(pubkeyHex: string): Promise<string[]> {
 		return [];
 	}
 
-	return contactsEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
+	return contactsEvent.tags.filter((tag) => tag[0] === 'p').map((tag) => tag[1]);
 }
 
 export interface ContactProfile {
@@ -97,12 +100,14 @@ export interface ContactProfile {
 	about?: string;
 }
 
-export async function fetchMultipleProfiles(pubkeyHexes: string[]): Promise<Map<string, ContactProfile>> {
+export async function fetchMultipleProfiles(
+	pubkeyHexes: string[]
+): Promise<Map<string, ContactProfile>> {
 	const p = getPool();
 	const profiles = new Map<string, ContactProfile>();
 
 	// Initialize with default profiles
-	pubkeyHexes.forEach(pubkey => {
+	pubkeyHexes.forEach((pubkey) => {
 		profiles.set(pubkey, {
 			pubkey,
 			npub: nip19.npubEncode(pubkey)
@@ -129,7 +134,7 @@ export async function fetchMultipleProfiles(pubkeyHexes: string[]): Promise<Map<
 					authors: chunk
 				});
 
-				events.forEach(event => {
+				events.forEach((event) => {
 					try {
 						const metadata = JSON.parse(event.content);
 						profiles.set(event.pubkey, {
@@ -173,7 +178,7 @@ async function fetchUserWriteRelays(userPubkey: string): Promise<string[]> {
 
 		// Extract write relays
 		const writeRelays: string[] = [];
-		relayListEvent.tags.forEach(tag => {
+		relayListEvent.tags.forEach((tag) => {
 			if (tag[0] === 'r') {
 				const relayUrl = tag[1];
 				const marker = tag[2]; // 'read', 'write', or undefined (both)
@@ -202,19 +207,18 @@ export async function updateContactList(
 	const userWriteRelays = await fetchUserWriteRelays(userPubkey);
 
 	// Combine user's write relays with defaults (user's relays first)
-	const allRelays = userWriteRelays.length > 0
-		? [...userWriteRelays, ...DEFAULT_RELAYS]
-		: DEFAULT_RELAYS;
+	const allRelays =
+		userWriteRelays.length > 0 ? [...userWriteRelays, ...DEFAULT_RELAYS] : DEFAULT_RELAYS;
 
 	// Normalize and remove duplicates
-	const normalizedRelays = allRelays.map(url => normalizeURL(url));
+	const normalizedRelays = allRelays.map((url) => normalizeURL(url));
 	const uniqueRelays = [...new Set(normalizedRelays)];
 
 	// Create kind 3 event
 	const event = {
 		kind: 3,
 		created_at: Math.floor(Date.now() / 1000),
-		tags: contactPubkeys.map(pubkey => ['p', pubkey]),
+		tags: contactPubkeys.map((pubkey) => ['p', pubkey]),
 		content: '',
 		pubkey: userPubkey
 	};
@@ -249,14 +253,14 @@ export interface InteractionScore {
 
 function extractZapAmount(event: Event): number {
 	// Try to get amount from "amount" tag (in millisats)
-	const amountTag = event.tags.find(tag => tag[0] === 'amount');
+	const amountTag = event.tags.find((tag) => tag[0] === 'amount');
 	if (amountTag && amountTag[1]) {
 		const millisats = parseInt(amountTag[1], 10);
 		return Math.floor(millisats / 1000); // Convert to sats
 	}
 
 	// Try to parse from description tag
-	const descriptionTag = event.tags.find(tag => tag[0] === 'description');
+	const descriptionTag = event.tags.find((tag) => tag[0] === 'description');
 	if (descriptionTag && descriptionTag[1]) {
 		try {
 			const zapRequest = JSON.parse(descriptionTag[1]);
@@ -284,7 +288,7 @@ export async function calculateInteractionScores(
 	const scores = new Map<string, InteractionScore>();
 
 	// Initialize scores
-	contactPubkeys.forEach(pubkey => {
+	contactPubkeys.forEach((pubkey) => {
 		scores.set(pubkey, {
 			pubkey,
 			score: 0,
@@ -300,19 +304,18 @@ export async function calculateInteractionScores(
 	}
 
 	const now = Math.floor(Date.now() / 1000);
-	const since = now - (daysBack * 24 * 60 * 60);
+	const since = now - daysBack * 24 * 60 * 60;
 
 	try {
 		// Fetch target user's write relays
 		const targetWriteRelays = await fetchUserWriteRelays(targetUserPubkey);
 
 		// Combine target's write relays with defaults
-		const allRelays = targetWriteRelays.length > 0
-			? [...targetWriteRelays, ...DEFAULT_RELAYS]
-			: DEFAULT_RELAYS;
+		const allRelays =
+			targetWriteRelays.length > 0 ? [...targetWriteRelays, ...DEFAULT_RELAYS] : DEFAULT_RELAYS;
 
 		// Normalize and remove duplicates
-		const normalizedRelays = allRelays.map(url => normalizeURL(url));
+		const normalizedRelays = allRelays.map((url) => normalizeURL(url));
 		const queryRelays = [...new Set(normalizedRelays)];
 
 		// Fetch target user's interactions with contacts in parallel
@@ -345,9 +348,9 @@ export async function calculateInteractionScores(
 		]);
 
 		// Count mentions/replies
-		mentionEvents.forEach(event => {
-			const pTags = event.tags.filter(tag => tag[0] === 'p');
-			pTags.forEach(tag => {
+		mentionEvents.forEach((event) => {
+			const pTags = event.tags.filter((tag) => tag[0] === 'p');
+			pTags.forEach((tag) => {
 				const contactPubkey = tag[1];
 				if (contactPubkeys.includes(contactPubkey)) {
 					const scoreData = scores.get(contactPubkey);
@@ -367,16 +370,16 @@ export async function calculateInteractionScores(
 		});
 
 		const eventIdToContactPubkey = new Map<string, string>();
-		contactPosts.forEach(event => {
+		contactPosts.forEach((event) => {
 			if (event.id) {
 				eventIdToContactPubkey.set(event.id, event.pubkey);
 			}
 		});
 
 		// Count reactions to contacts' posts
-		reactionEvents.forEach(event => {
-			const eTags = event.tags.filter(tag => tag[0] === 'e');
-			eTags.forEach(tag => {
+		reactionEvents.forEach((event) => {
+			const eTags = event.tags.filter((tag) => tag[0] === 'e');
+			eTags.forEach((tag) => {
 				const eventId = tag[1];
 				const contactPubkey = eventIdToContactPubkey.get(eventId);
 				if (contactPubkey) {
@@ -389,9 +392,9 @@ export async function calculateInteractionScores(
 		});
 
 		// Count reposts of contacts' posts
-		repostEvents.forEach(event => {
-			const eTags = event.tags.filter(tag => tag[0] === 'e');
-			eTags.forEach(tag => {
+		repostEvents.forEach((event) => {
+			const eTags = event.tags.filter((tag) => tag[0] === 'e');
+			eTags.forEach((tag) => {
 				const eventId = tag[1];
 				const contactPubkey = eventIdToContactPubkey.get(eventId);
 				if (contactPubkey) {
@@ -404,18 +407,18 @@ export async function calculateInteractionScores(
 		});
 
 		// Count zaps to contacts (check if target user is the sender)
-		zapEvents.forEach(event => {
+		zapEvents.forEach((event) => {
 			// Check if target user is the sender by parsing the zap request in description
-			const descriptionTag = event.tags.find(tag => tag[0] === 'description');
+			const descriptionTag = event.tags.find((tag) => tag[0] === 'description');
 			if (descriptionTag && descriptionTag[1]) {
 				try {
 					const zapRequest = JSON.parse(descriptionTag[1]);
 					if (zapRequest.pubkey === targetUserPubkey) {
 						// This zap is from the target user
 						const zapAmount = extractZapAmount(event);
-						const pTags = event.tags.filter(tag => tag[0] === 'p');
+						const pTags = event.tags.filter((tag) => tag[0] === 'p');
 
-						pTags.forEach(tag => {
+						pTags.forEach((tag) => {
 							const contactPubkey = tag[1];
 							if (contactPubkeys.includes(contactPubkey)) {
 								const scoreData = scores.get(contactPubkey);
@@ -433,15 +436,11 @@ export async function calculateInteractionScores(
 
 		// Calculate final scores using the formula:
 		// score = reactionsCount + repostsCount * 3 + zappedSats / 10 + repliesCount * 4
-		scores.forEach(scoreData => {
+		scores.forEach((scoreData) => {
 			scoreData.score = Math.round(
-				scoreData.reactions +
-				scoreData.reposts * 3 +
-				scoreData.zaps / 10 +
-				scoreData.replies * 4
+				scoreData.reactions + scoreData.reposts * 3 + scoreData.zaps / 10 + scoreData.replies * 4
 			);
 		});
-
 	} catch (error) {
 		console.error('Error calculating interaction scores:', error);
 	}

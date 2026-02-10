@@ -113,27 +113,43 @@ export async function fetchMultipleProfiles(pubkeyHexes: string[]): Promise<Map<
 		return profiles;
 	}
 
-	try {
-		const events = await p.querySync(DEFAULT_RELAYS, {
-			kinds: [0],
-			authors: pubkeyHexes
-		});
+	// Split into chunks of 400 to avoid relay limits
+	const CHUNK_SIZE = 400;
+	const chunks: string[][] = [];
+	for (let i = 0; i < pubkeyHexes.length; i += CHUNK_SIZE) {
+		chunks.push(pubkeyHexes.slice(i, i + CHUNK_SIZE));
+	}
 
-		events.forEach(event => {
+	try {
+		// Fetch all chunks in parallel
+		const chunkPromises = chunks.map(async (chunk) => {
 			try {
-				const metadata = JSON.parse(event.content);
-				profiles.set(event.pubkey, {
-					pubkey: event.pubkey,
-					npub: nip19.npubEncode(event.pubkey),
-					name: metadata.name,
-					display_name: metadata.display_name,
-					picture: metadata.picture,
-					about: metadata.about
+				const events = await p.querySync(DEFAULT_RELAYS, {
+					kinds: [0],
+					authors: chunk
+				});
+
+				events.forEach(event => {
+					try {
+						const metadata = JSON.parse(event.content);
+						profiles.set(event.pubkey, {
+							pubkey: event.pubkey,
+							npub: nip19.npubEncode(event.pubkey),
+							name: metadata.name,
+							display_name: metadata.display_name,
+							picture: metadata.picture,
+							about: metadata.about
+						});
+					} catch (error) {
+						console.error('Error parsing metadata for', event.pubkey, error);
+					}
 				});
 			} catch (error) {
-				console.error('Error parsing metadata for', event.pubkey, error);
+				console.error('Error fetching chunk:', error);
 			}
 		});
+
+		await Promise.all(chunkPromises);
 	} catch (error) {
 		console.error('Error fetching profiles:', error);
 	}

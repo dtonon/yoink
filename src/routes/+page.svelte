@@ -12,9 +12,29 @@
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let userNpub = $state<string>(''); // Npub format
 
-	onMount(() => {
+	function waitForNostr(timeout = 2000): Promise<boolean> {
+		return new Promise((resolve) => {
+			if (typeof window.nostr !== 'undefined' && window.nostr._fake !== true) {
+				return resolve(true);
+			}
+
+			const interval = setInterval(() => {
+				if (typeof window.nostr !== 'undefined' && window.nostr._fake !== true) {
+					clearInterval(interval);
+					resolve(true);
+				}
+			}, 50);
+
+			setTimeout(() => {
+				clearInterval(interval);
+				resolve(false);
+			}, timeout);
+		});
+	}
+
+	onMount(async () => {
 		// Check if window.nostr exists and is not the fake one from window.nostr.js
-		hasNip07Extension = typeof window.nostr !== 'undefined' && window.nostr._fake !== true;
+		hasNip07Extension = await waitForNostr();
 
 		// Check if user is already logged in
 		const savedPubkey = localStorage.getItem('userPubkey');

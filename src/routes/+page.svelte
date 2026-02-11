@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
 	import { nip19 } from 'nostr-tools';
+	import { queryProfile } from 'nostr-tools/nip05';
 	import { focusInput } from '$lib/actions';
 
 	let hasNip07Extension = $state(false);
@@ -98,32 +99,49 @@
 		npubError = '';
 	}
 
-	function confirmNpubLogin() {
+	async function confirmNpubLogin() {
 		npubError = '';
 
 		if (!npubInput.trim()) {
-			npubError = 'Please enter a valid npub or nprofile';
+			npubError = 'Please enter a valid npub, nprofile, or NIP-05 identifier';
 			return;
 		}
 
+		isLoggingIn = true;
+		const input = npubInput.trim();
+
+		// Check if input looks like an email (name@domain.com)
+		const looksLikeEmail = input.includes('@');
+
+		// Check if input looks like a domain (domain.com)
+		const looksLikeDomain =
+			input.includes('.') && !input.startsWith('npub') && !input.startsWith('nprofile');
+
 		try {
-			const trimmedInput = npubInput.trim();
-			let pubkeyHex = '';
+			let pubkeyHex: string | undefined;
 
-			if (trimmedInput.startsWith('npub') || trimmedInput.startsWith('nprofile')) {
-				const decoded = nip19.decode(trimmedInput);
-				if (decoded.type === 'npub') {
-					pubkeyHex = decoded.data as string;
-				} else if (decoded.type === 'nprofile') {
-					pubkeyHex = decoded.data.pubkey;
+			if (looksLikeEmail || looksLikeDomain) {
+				// NIP-05 lookup
+				const profile = await queryProfile(input);
+				if (profile && profile.pubkey) {
+					pubkeyHex = profile.pubkey;
+				} else {
+					npubError = 'NIP-05 identifier not found or invalid';
+					isLoggingIn = false;
+					return;
 				}
+			} else if (input.startsWith('npub') || input.startsWith('nprofile')) {
+				// npub/nprofile decoding
+				const decoded = nip19.decode(input);
+				if (decoded.type !== 'npub' && decoded.type !== 'nprofile') {
+					npubError = 'Invalid npub or nprofile';
+					isLoggingIn = false;
+					return;
+				}
+				pubkeyHex = decoded.type === 'npub' ? decoded.data : decoded.data.pubkey;
 			} else {
-				npubError = 'Invalid format. Please enter a valid npub or nprofile';
-				return;
-			}
-
-			if (!pubkeyHex) {
-				npubError = 'Failed to decode npub/nprofile';
+				npubError = 'Invalid format. Please enter a npub, nprofile, or NIP-05 identifier';
+				isLoggingIn = false;
 				return;
 			}
 
@@ -133,10 +151,12 @@
 			localStorage.setItem('loginMode', 'read');
 
 			showNpubModal = false;
+			isLoggingIn = false;
 			goto('/search');
 		} catch (error) {
-			console.error('Npub login error:', error);
-			npubError = 'Invalid npub/nprofile format. Please check and try again';
+			console.error('Login error:', error);
+			npubError = 'Invalid format or lookup failed. Please try again';
+			isLoggingIn = false;
 		}
 	}
 </script>
@@ -214,12 +234,12 @@
 				Read-only login
 			</h2>
 			<p class="mb-4 text-sm text-gray-600">
-				Enter your npub or nprofile to login in read-only mode. You'll be able to view and compare
-				contacts, but won't be able to update your contact list.
+				Enter your npub, nprofile, or NIP-05 identifier to login in read-only mode. You'll be able
+				to view and compare contacts, but won't be able to update your contact list.
 			</p>
 			<div class="mb-4">
 				<label for="npub-input" class="mb-2 block text-sm font-medium text-gray-700">
-					Npub or nprofile
+					Npub, nprofile, or NIP-05
 				</label>
 				<input
 					id="npub-input"
@@ -230,7 +250,7 @@
 					use:focusInput
 					class="w-full rounded-lg border border-gray-300 px-4 py-2 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
 					onkeydown={(e) => {
-						if (e.key === 'Enter') confirmNpubLogin();
+						if (e.key === 'Enter' && !isLoggingIn) confirmNpubLogin();
 					}}
 				/>
 				{#if npubError}
@@ -240,15 +260,17 @@
 			<div class="flex gap-3">
 				<button
 					onclick={cancelNpubLogin}
-					class="flex-1 cursor-pointer rounded-lg bg-gray-200 px-4 py-3 font-medium text-gray-800 transition-colors hover:bg-gray-300"
+					disabled={isLoggingIn}
+					class="flex-1 cursor-pointer rounded-lg bg-gray-200 px-4 py-3 font-medium text-gray-800 transition-colors hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					Cancel
 				</button>
 				<button
 					onclick={confirmNpubLogin}
-					class="flex-1 cursor-pointer rounded-lg bg-accent px-4 py-3 font-medium text-white transition-colors hover:bg-accent-hover"
+					disabled={isLoggingIn}
+					class="flex-1 cursor-pointer rounded-lg bg-accent px-4 py-3 font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					Login
+					{isLoggingIn ? 'Loading...' : 'Login'}
 				</button>
 			</div>
 		</div>

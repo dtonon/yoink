@@ -1,6 +1,6 @@
 # Yoink
 
-See someone's Nostr following list you like? Yoink it. Compare contacts, discover new people, and grab the best follows with one click.
+See someone's [Nostr](https://github.com/nostr-protocol/nostr) following list you like? Yoink it. Compare contacts, discover new people, and grab the best follows with one click.
 
 https://github.com/user-attachments/assets/e50d3db0-6c1d-4cb7-bc2a-2a9f98b77229
 

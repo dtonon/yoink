@@ -1,11 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { fade } from 'svelte/transition';
 	import { nip19 } from 'nostr-tools';
 
 	let hasNip07Extension = $state(false);
 	let isLoggingIn = $state(false);
 	let errorMessage = $state('');
+	let showNpubModal = $state(false);
+	let npubInput = $state('');
+	let npubError = $state('');
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let userPubkey = $state<string>(''); // Hex format
@@ -82,15 +86,27 @@
 
 	function handleNpubLogin() {
 		errorMessage = '';
+		npubError = '';
+		npubInput = '';
+		showNpubModal = true;
+	}
 
-		const input = prompt('Enter your npub or nprofile:');
+	function cancelNpubLogin() {
+		showNpubModal = false;
+		npubInput = '';
+		npubError = '';
+	}
 
-		if (!input) {
+	function confirmNpubLogin() {
+		npubError = '';
+
+		if (!npubInput.trim()) {
+			npubError = 'Please enter a valid npub or nprofile';
 			return;
 		}
 
 		try {
-			const trimmedInput = input.trim();
+			const trimmedInput = npubInput.trim();
 			let pubkeyHex = '';
 
 			if (trimmedInput.startsWith('npub') || trimmedInput.startsWith('nprofile')) {
@@ -101,12 +117,12 @@
 					pubkeyHex = decoded.data.pubkey;
 				}
 			} else {
-				errorMessage = 'Invalid format. Please enter a valid npub or nprofile.';
+				npubError = 'Invalid format. Please enter a valid npub or nprofile';
 				return;
 			}
 
 			if (!pubkeyHex) {
-				errorMessage = 'Failed to decode npub/nprofile.';
+				npubError = 'Failed to decode npub/nprofile';
 				return;
 			}
 
@@ -115,10 +131,11 @@
 			localStorage.setItem('userPubkey', pubkeyHex);
 			localStorage.setItem('loginMode', 'read');
 
+			showNpubModal = false;
 			goto('/search');
 		} catch (error) {
 			console.error('Npub login error:', error);
-			errorMessage = 'Invalid npub/nprofile format. Please check and try again.';
+			npubError = 'Invalid npub/nprofile format. Please check and try again';
 		}
 	}
 </script>
@@ -171,3 +188,67 @@
 		</div>
 	</div>
 </div>
+
+<!-- Npub Login Modal -->
+{#if showNpubModal}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+		transition:fade={{ duration: 150 }}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="npub-dialog-title"
+		tabindex="-1"
+		onclick={(e) => {
+			if (e.target === e.currentTarget) cancelNpubLogin();
+		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') cancelNpubLogin();
+		}}
+	>
+		<div
+			class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+			transition:fade={{ duration: 150 }}
+		>
+			<h2 id="npub-dialog-title" class="mb-4 text-xl font-semibold text-gray-900">
+				Read-only login
+			</h2>
+			<p class="mb-4 text-sm text-gray-600">
+				Enter your npub or nprofile to login in read-only mode. You'll be able to view and compare
+				contacts, but won't be able to update your contact list.
+			</p>
+			<div class="mb-4">
+				<label for="npub-input" class="mb-2 block text-sm font-medium text-gray-700">
+					Npub or nprofile
+				</label>
+				<input
+					id="npub-input"
+					type="text"
+					bind:value={npubInput}
+					placeholder="npub1... or nprofile1..."
+					autofocus
+					class="w-full rounded-lg border border-gray-300 px-4 py-2 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+					onkeydown={(e) => {
+						if (e.key === 'Enter') confirmNpubLogin();
+					}}
+				/>
+				{#if npubError}
+					<p class="mt-2 text-sm text-red-600">{npubError}</p>
+				{/if}
+			</div>
+			<div class="flex gap-3">
+				<button
+					onclick={cancelNpubLogin}
+					class="flex-1 cursor-pointer rounded-lg bg-gray-200 px-4 py-3 font-medium text-gray-800 transition-colors hover:bg-gray-300"
+				>
+					Cancel
+				</button>
+				<button
+					onclick={confirmNpubLogin}
+					class="flex-1 cursor-pointer rounded-lg bg-accent px-4 py-3 font-medium text-white transition-colors hover:bg-accent-hover"
+				>
+					Login
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

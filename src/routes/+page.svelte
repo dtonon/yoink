@@ -126,6 +126,7 @@
 <div class="flex min-h-screen items-center justify-center px-8 sm:px-4">
 	<div class="w-full max-w-md space-y-8">
 		<div class="text-center">
+			<img src="/logo.png" alt="logo" class="mx-auto w-3xs sm:w-2xs" />
 			<h1 class="mb-4 text-4xl font-bold text-gray-900">Yoink</h1>
 			<p class="leading-5 text-gray-600">
 				Compare your Nostr contacts with others, discover new people to follow, and yoink their best

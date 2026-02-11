@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
 	import { nip19 } from 'nostr-tools';
+	import { focusInput } from '$lib/actions';
 
 	let hasNip07Extension = $state(false);
 	let isLoggingIn = $state(false);
@@ -224,9 +225,10 @@
 					id="npub-input"
 					type="text"
 					bind:value={npubInput}
-					placeholder="npub1... or nprofile1..."
-					autofocus
-					class="w-full rounded-lg border border-gray-300 px-4 py-2 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+					placeholder="npub1..., nprofile1..., or name@domain.com"
+					disabled={isLoggingIn}
+					use:focusInput
+					class="w-full rounded-lg border border-gray-300 px-4 py-2 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
 					onkeydown={(e) => {
 						if (e.key === 'Enter') confirmNpubLogin();
 					}}

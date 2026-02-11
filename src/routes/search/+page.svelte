@@ -6,6 +6,7 @@
 	import { fetchUserProfile, fetchContactList, type UserProfile } from '$lib/nostr';
 	import { comparisonStore } from '$lib/store';
 	import { logout } from '$lib/auth';
+	import { focusInput } from '$lib/actions';
 
 	let compareNpub = $state('');
 	let errorMessage = $state('');
@@ -166,6 +167,7 @@
 					type="text"
 					bind:value={compareNpub}
 					placeholder="npub, nprofile, or NIP-05 (e.g., dtonon.com)"
+					use:focusInput
 					onkeydown={(e) => e.key === 'Enter' && handleLoadContact()}
 					class="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-gray-300 focus:outline-none"
 				/>

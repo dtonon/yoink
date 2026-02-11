@@ -24,6 +24,7 @@
 	let updateStatus = $state<'idle' | 'updating' | 'success'>('idle');
 	let sortMode = $state<'default' | 'interactions'>('default');
 	let isCalculatingScores = $state(false);
+	let showConfirmDialog = $state(false);
 
 	let currentUser = $state<UserProfile | null>(null);
 	let targetUser = $state<UserProfile | null>(null);
@@ -230,9 +231,21 @@
 		return contact.interactionScore || 0;
 	}
 
-	async function handleUpdate() {
+	function handleUpdate() {
+		// Show confirmation dialog for removals
+		if (activeTab === 'common' || activeTab === 'missing') {
+			showConfirmDialog = true;
+			return;
+		}
+
+		// For adding contacts, proceed directly
+		performUpdate();
+	}
+
+	async function performUpdate() {
 		if (updateStatus === 'updating' || !currentUser) return;
 
+		showConfirmDialog = false;
 		updateStatus = 'updating';
 
 		try {
@@ -281,6 +294,10 @@
 			updateStatus = 'idle';
 			alert('Failed to update contact list. Please try again.');
 		}
+	}
+
+	function cancelUpdate() {
+		showConfirmDialog = false;
 	}
 
 	async function recomputeContacts() {
@@ -746,6 +763,53 @@
 						{/each}
 					</div>
 				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Confirmation Dialog -->
+{#if showConfirmDialog}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+		transition:fade={{ duration: 150 }}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="confirm-dialog-title"
+		tabindex="-1"
+		onclick={(e) => {
+			if (e.target === e.currentTarget) cancelUpdate();
+		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') cancelUpdate();
+		}}
+	>
+		<div
+			class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+			transition:fade={{ duration: 150 }}
+		>
+			<h2 id="confirm-dialog-title" class="mb-4 text-xl font-semibold text-gray-900">
+				Confirm removal
+			</h2>
+			<p class="mb-6 text-gray-700">
+				Are you sure you want to remove
+				<span class="font-semibold">{getActiveSelection().size}</span>
+				{getActiveSelection().size === 1 ? 'person' : 'people'} from your contacts? This action will update
+				your contact list on Nostr
+			</p>
+			<div class="flex gap-3">
+				<button
+					onclick={cancelUpdate}
+					class="flex-1 cursor-pointer rounded-lg bg-gray-200 px-4 py-3 font-medium text-gray-800 transition-colors hover:bg-gray-300"
+				>
+					Cancel
+				</button>
+				<button
+					onclick={performUpdate}
+					class="flex-1 cursor-pointer rounded-lg bg-accent px-4 py-3 font-medium text-white transition-colors hover:bg-accent-hover"
+				>
+					Remove
+				</button>
 			</div>
 		</div>
 	</div>
